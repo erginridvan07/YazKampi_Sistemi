@@ -1,0 +1,139 @@
+{
+  "teachers": [
+    {
+      "id": 1,
+      "name": "Dr. Ahmet Kaya",
+      "subject": "Matematik",
+      "courses": ["Cebir I", "Analiz I"]
+    },
+    {
+      "id": 2,
+      "name": "Prof. Fatih Yıldız",
+      "subject": "Fizik",
+      "courses": ["Klasik Mekanik", "Elektromanyetizm"]
+    },
+    {
+      "id": 3,
+      "name": "Öğr. Gör. Ayşe Demir",
+      "subject": "Kimya",
+      "courses": ["Genel Kimya", "Organik Kimya"]
+    },
+    {
+      "id": 4,
+      "name": "Dr. Mehmet Eren",
+      "subject": "Bilgisayar Bilimi",
+      "courses": ["Programlama I", "Veri Yapıları"]
+    },
+    {
+      "id": 5,
+      "name": "Doç. Zeynep Karaman",
+      "subject": "İngilizce",
+      "courses": ["İngilizce I", "İngilizce II"]
+    }
+  ],
+  "classes": [
+    {
+      "id": 1,
+      "name": "Hazırlık",
+      "code": "PREP",
+      "courses": [
+        {
+          "id": 1,
+          "name": "Matematik",
+          "teacher": "Dr. Ahmet Kaya",
+          "book": "Matematik Temelleri",
+          "totalPages": 250,
+          "currentPage": 120,
+          "description": "Dört işlem ve sayı sistemleri"
+        },
+        {
+          "id": 2,
+          "name": "İngilizce I",
+          "teacher": "Doç. Zeynep Karaman",
+          "book": "English Basics",
+          "totalPages": 300,
+          "currentPage": 85,
+          "description": "Temel İngilizce kelime ve diyaloglar"
+        }
+      ],
+      "students": [
+        { "id": 101, "name": "Eren Akman", "room": "A-205" },
+        { "id": 102, "name": "Merve Şahin", "room": "B-108" },
+        { "id": 103, "name": "Can Kara", "room": "A-201" },
+        { "id": 104, "name": "Aysu Yılmaz", "room": "B-112" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "1. Sınıf",
+      "code": "1ST",
+      "courses": [
+        {
+          "id": 3,
+          "name": "Cebir I",
+          "teacher": "Dr. Ahmet Kaya",
+          "book": "Modern Cebir",
+          "totalPages": 400,
+          "currentPage": 200,
+          "description": "Polinom ve denklemler"
+        },
+        {
+          "id": 4,
+          "name": "Klasik Mekanik",
+          "teacher": "Prof. Fatih Yıldız",
+          "book": "Mekanik Prensipleri",
+          "totalPages": 350,
+          "currentPage": 150,
+          "description": "Kuvvetler ve hareket"
+        },
+        {
+          "id": 5,
+          "name": "Programlama I",
+          "teacher": "Dr. Mehmet Eren",
+          "book": "Python Programlama",
+          "totalPages": 380,
+          "currentPage": 180,
+          "description": "Temel programlama konseptleri"
+        }
+      ],
+      "students": [
+        { "id": 201, "name": "Ömer Çelik", "room": "C-301" },
+        { "id": 202, "name": "Gözde Kılıç", "room": "C-305" },
+        { "id": 203, "name": "İbrahim Türk", "room": "D-201" },
+        { "id": 204, "name": "Seda Aydın", "room": "C-310" },
+        { "id": 205, "name": "Barış Saraç", "room": "D-205" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "2. Sınıf",
+      "code": "2ND",
+      "courses": [
+        {
+          "id": 6,
+          "name": "Analiz I",
+          "teacher": "Dr. Ahmet Kaya",
+          "book": "Matematiksel Analiz",
+          "totalPages": 450,
+          "currentPage": 220,
+          "description": "Limit ve süreklilik"
+        },
+        {
+          "id": 7,
+          "name": "Elektromanyetizm",
+          "teacher": "Prof. Fatih Yıldız",
+          "book": "Elektrik ve Manyetizma",
+          "totalPages": 420,
+          "currentPage": 180,
+          "description": "Elektrik alanları ve devreler"
+        }
+      ],
+      "students": [
+        { "id": 301, "name": "Nur Polat", "room": "E-401" },
+        { "id": 302, "name": "Kerem Güneş", "room": "E-405" },
+        { "id": 303, "name": "Işıl Koç", "room": "E-408" },
+        { "id": 304, "name": "Rıza Özkan", "room": "F-302" }
+      ]
+    }
+  ]
+}

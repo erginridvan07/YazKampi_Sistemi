@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yurt Yönetimi - Yaz Kampı Sistemi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-box">
+            <span class="loading"></span>
+            <p>Veriler yükleniyor...</p>
+        </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <datalist id="teacherSuggestions"></datalist>
+
+    <!-- Firebase yapılandırması eksik -->
+    <div id="configErrorScreen" class="auth-screen hidden">
+        <div class="auth-card">
+            <h1>⚙️ Kurulum Gerekli</h1>
+            <p id="configErrorMessage" class="auth-subtitle"></p>
+            <p class="auth-help">Detaylı adımlar için <strong>README.md</strong> dosyasına bakın.</p>
+        </div>
+    </div>
+
+    <!-- Giriş ekranı -->
+    <div id="loginScreen" class="auth-screen hidden">
+        <div class="auth-card">
+            <h1>🏫 Yaz Kampı Sistemi</h1>
+            <p class="auth-subtitle">Yurt yönetimi personeli için giriş. Derse gelen hocaların sisteme erişmesi gerekmez; bilgileri burada yönetilir.</p>
+            <div class="form-row">
+                <label for="loginEmail">E-posta</label>
+                <input id="loginEmail" type="email" autocomplete="username" placeholder="ornek@yurt.com" />
+            </div>
+            <div class="form-row">
+                <label for="loginPassword">Şifre</label>
+                <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if (event.key === 'Enter') signIn()" />
+            </div>
+            <div class="button-row">
+                <button class="save-btn full-width" onclick="signIn()">Giriş Yap</button>
+            </div>
+            <p class="auth-help">Hesabınız yoksa yurt yöneticisi Firebase Console üzerinden yönetim personeli eklemelidir.</p>
+        </div>
+    </div>
+
+    <div id="appShell" class="hidden">
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-top">
+                <div class="header-content">
+                    <h1>🏫 Yurt Yönetimi - Yaz Kampı Sistemi</h1>
+                    <p class="subtitle">Yurt yönetimi paneli — ders hocaları, sınıflar ve öğrenci bilgileri</p>
+                </div>
+                <div class="user-bar">
+                    <span id="syncStatus" class="sync-status sync-loading">Yükleniyor...</span>
+                    <span id="userEmail" class="user-email"></span>
+                    <button class="back-btn small-btn" onclick="signOutUser()">Çıkış</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Home Screen -->
+            <div id="homeScreen" class="screen active">
+                <div class="menu-grid">
+                    <div class="menu-card" onclick="showTeachers()">
+                        <div class="menu-icon">👨‍🏫</div>
+                        <h2>Derse Gelen Hocalar</h2>
+                        <p>Yurda ders veren hocaların bilgileri (giriş gerekmez)</p>
+                    </div>
+                    <div class="menu-card" onclick="showClasses()">
+                        <div class="menu-icon">📚</div>
+                        <h2>Sınıflar</h2>
+                        <p>Sınıf bilgilerini ve öğrencileri görüntüle</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Teachers Screen -->
+            <div id="teachersScreen" class="screen">
+                <div class="screen-header">
+                    <button class="back-btn" onclick="showHome()">← Geri</button>
+                    <h2>Derse Gelen Hocalar</h2>
+                </div>
+                <p class="info-banner">Bu listedeki hocalar yalnızca bilgi amaçlıdır. Derse gelen hocaların sisteme giriş yapması gerekmez.</p>
+                <div class="screen-toolbar">
+                    <input
+                        type="search"
+                        class="search-input"
+                        placeholder="Hoca, bölüm veya ders ara..."
+                        oninput="onTeacherSearch(this.value)"
+                    />
+                    <button class="edit-btn small" onclick="toggleTeacherAddForm()">+ Yeni Ders Hocası Ekle</button>
+                </div>
+                <div id="teacherAddForm" class="edit-form hidden">
+                    <div class="form-row">
+                        <label for="newTeacherName">Ad Soyad</label>
+                        <input id="newTeacherName" type="text" />
+                    </div>
+                    <div class="form-row">
+                        <label for="newTeacherSubject">Bölüm</label>
+                        <input id="newTeacherSubject" type="text" />
+                    </div>
+                    <div class="form-row">
+                        <label for="newTeacherCourses">Dersler</label>
+                        <input id="newTeacherCourses" type="text" placeholder="Matematik, Fizik" />
+                        <small>Dersleri virgülle ayırın.</small>
+                    </div>
+                    <div class="button-row">
+                        <button class="save-btn" onclick="saveNewTeacher()">Kaydet</button>
+                        <button class="cancel-btn" onclick="cancelTeacherAdd()">Vazgeç</button>
+                    </div>
+                </div>
+                <div id="teachersList" class="list-container">
+                    <!-- Dinamik olarak doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Classes Screen -->
+            <div id="classesScreen" class="screen">
+                <div class="screen-header">
+                    <button class="back-btn" onclick="showHome()">← Geri</button>
+                    <h2>Sınıflar</h2>
+                </div>
+                <div class="screen-toolbar">
+                    <input
+                        type="search"
+                        class="search-input"
+                        placeholder="Sınıf, kod, öğrenci veya oda ara..."
+                        oninput="onClassSearch(this.value)"
+                    />
+                    <button class="edit-btn small" onclick="toggleClassAddForm()">+ Yeni Sınıf Ekle</button>
+                </div>
+                <div id="classAddForm" class="edit-form hidden">
+                    <div class="form-row">
+                        <label for="newClassName">Sınıf Adı</label>
+                        <input id="newClassName" type="text" />
+                    </div>
+                    <div class="form-row">
+                        <label for="newClassCode">Sınıf Kodu</label>
+                        <input id="newClassCode" type="text" />
+                    </div>
+                    <div class="button-row">
+                        <button class="save-btn" onclick="saveNewClass()">Kaydet</button>
+                        <button class="cancel-btn" onclick="cancelClassAdd()">Vazgeç</button>
+                    </div>
+                </div>
+                <div id="classesList" class="grid-container">
+                    <!-- Dinamik olarak doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Class Details Screen -->
+            <div id="classDetailsScreen" class="screen">
+                <div class="screen-header">
+                    <button class="back-btn" onclick="showClasses()">← Geri</button>
+                    <h2 id="classDetailsTitle">Sınıf Detayları</h2>
+                    <button class="edit-btn small" id="editClassBtn" onclick="toggleClassEditMode()">✏️ Sınıfı Düzenle</button>
+                </div>
+                <div id="classEditForm" class="edit-form hidden">
+                    <div class="form-row">
+                        <label for="editClassName">Sınıf Adı</label>
+                        <input id="editClassName" type="text" />
+                    </div>
+                    <div class="form-row">
+                        <label for="editClassCode">Sınıf Kodu</label>
+                        <input id="editClassCode" type="text" />
+                    </div>
+                    <div class="button-row">
+                        <button class="save-btn" onclick="saveClassChanges()">Kaydet</button>
+                        <button class="cancel-btn" onclick="cancelClassEdit()">Vazgeç</button>
+                    </div>
+                </div>
+                <div class="student-list" id="studentsList">
+                    <!-- Dinamik olarak doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Student Details Modal -->
+            <div id="studentModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeModal()">&times;</span>
+                    <h2 id="studentName"></h2>
+                    <div class="modal-body">
+                        <div class="info-group">
+                            <h3>📍 Kaldığı Yer</h3>
+                            <p id="studentLocation"></p>
+                        </div>
+                        <div id="studentCourses"></div>
+                        <div class="button-row modal-actions">
+                            <button class="edit-btn" onclick="toggleEditMode()">✏️ Düzenle</button>
+                            <button id="deleteStudentBtn" class="delete-btn">🗑️ Öğrenciyi Sil</button>
+                        </div>
+                        <div id="studentEditForm" class="edit-form hidden">
+                            <div class="form-row">
+                                <label for="studentNameInput">Öğrenci Adı</label>
+                                <input id="studentNameInput" type="text" />
+                            </div>
+                            <div class="form-row">
+                                <label for="studentRoomInput">Koğuş / Oda</label>
+                                <input id="studentRoomInput" type="text" />
+                            </div>
+                            <div class="button-row">
+                                <button class="save-btn" onclick="saveStudentChanges()">Kaydet</button>
+                                <button class="cancel-btn" onclick="cancelEditMode()">Vazgeç</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
