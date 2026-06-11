@@ -149,11 +149,57 @@ function refreshActiveScreen() {
 
 // ===== Firebase =====
 
+function isPlaceholderConfig(config) {
+    if (!config?.apiKey) return true;
+    const placeholders = ['YOUR_API_KEY', 'YOUR_PROJECT_ID', 'YOUR_APP_ID'];
+    return placeholders.some(value =>
+        Object.values(config).some(entry => String(entry).includes(value))
+    );
+}
+
+function getFirebaseConfig() {
+    if (window.firebaseConfig?.apiKey && !isPlaceholderConfig(window.firebaseConfig)) {
+        return window.firebaseConfig;
+    }
+
+    if (window.env?.FIREBASE_API_KEY) {
+        return {
+            apiKey: window.env.FIREBASE_API_KEY,
+            authDomain: window.env.FIREBASE_AUTH_DOMAIN,
+            projectId: window.env.FIREBASE_PROJECT_ID,
+            storageBucket: window.env.FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: window.env.FIREBASE_MESSAGING_SENDER_ID,
+            appId: window.env.FIREBASE_APP_ID
+        };
+    }
+
+    return window.firebaseConfig || null;
+}
+
+function getFirebaseConfigError() {
+    if (typeof firebase === 'undefined') {
+        return 'Firebase SDK yüklenemedi. İnternet bağlantınızı kontrol edin.';
+    }
+
+    const config = getFirebaseConfig();
+    if (!config) {
+        return 'firebase-config.js dosyası bulunamadı. GitHub Actions deploy işleminin tamamlandığından emin olun.';
+    }
+
+    if (isPlaceholderConfig(config)) {
+        return 'Firebase ayarları eksik. GitHub Repository Secrets değerlerini kontrol edip siteyi yeniden deploy edin.';
+    }
+
+    return 'Firebase başlatılamadı. Tarayıcı konsolundaki hatayı kontrol edin.';
+}
+
 function initFirebase() {
-    const config = window.firebaseConfig;
-    if (!config?.apiKey || typeof firebase === 'undefined') {
+    const config = getFirebaseConfig();
+    if (isPlaceholderConfig(config) || typeof firebase === 'undefined') {
         return false;
     }
+
+    window.firebaseConfig = config;
 
     try {
         if (!firebase.apps.length) {
@@ -307,9 +353,7 @@ async function signOutUser() {
 
 function bootstrapApp() {
     if (!initFirebase()) {
-        showConfigError(
-            'Firebase yapılandırması bulunamadı. Yerel geliştirme için firebase-config.example.js dosyasını firebase-config.js olarak kopyalayıp bilgilerinizi girin.'
-        );
+        showConfigError(getFirebaseConfigError());
         return;
     }
 
