@@ -63,9 +63,15 @@ body {
     flex-wrap: wrap;
 }
 
-.user-email {
+.user-email,
+.org-brand {
     color: var(--text-light);
     font-size: 0.95em;
+}
+
+.org-brand {
+    font-weight: 600;
+    color: var(--primary-color);
 }
 
 .small-btn {

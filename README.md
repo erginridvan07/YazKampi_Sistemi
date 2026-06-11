@@ -144,8 +144,18 @@ Firestore'da henüz veri yoksa, ilk giriş yapan yönetim personeli için `data.
 
 ## Sık Karşılaşılan Sorunlar
 
-**"Firebase yapılandırması bulunamadı"**
-→ `firebase-config.js` oluşturulmamış veya GitHub Secrets eksik.
+**"Kurulum Gerekli" / firebase-config.js bulunamadı**
+
+Bu hata genelde `firebase-config.js` dosyasının ES module formatında olmasından kaynaklanır. `app.js` dosyası `window.firebaseConfig` veya `window.env` bekler.
+
+Kontrol listesi:
+1. GitHub'daki `firebase-config.js` dosyası **import/export içermemeli**
+2. `index.html` içinde `<script type="module" src="firebase-config.js">` satırı **olmamalı**
+3. **Settings → Pages → Source:** `GitHub Actions` seçili olmalı
+4. **Actions** sekmesinde deploy yeşil tamamlanmış olmalı
+5. Repository **Secrets** altında 6 Firebase secret dolu olmalı
+
+Düzeltme sonrası: GitHub Desktop veya web arayüzünden güncel dosyaları push edin, deploy bitince sayfayı Ctrl+F5 ile yenileyin.
 
 **Giriş yapılamıyor**
 → Kullanıcı Firebase Authentication'da tanımlı mı? Authorized domain eklendi mi?

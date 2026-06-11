@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - master
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -11,32 +13,42 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject Firebase Configuration
+      - name: Create Firebase config files
         run: |
-          echo "window.env = {
-            FIREBASE_API_KEY: '${{ secrets.FIREBASE_API_KEY }}',
-            FIREBASE_AUTH_DOMAIN: '${{ secrets.FIREBASE_AUTH_DOMAIN }}',
-            FIREBASE_PROJECT_ID: '${{ secrets.FIREBASE_PROJECT_ID }}',
-            FIREBASE_STORAGE_BUCKET: '${{ secrets.FIREBASE_STORAGE_BUCKET }}',
-            FIREBASE_MESSAGING_SENDER_ID: '${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}',
-            FIREBASE_APP_ID: '${{ secrets.FIREBASE_APP_ID }}'
-          };" > env-config.js
-          
-          # HTML dosyasına bu dinamik env dosyasını dahil et
-          sed -i '/<head>/a \  <script src="./env-config.js"></script>' index.html
+          cat > firebase-config.js <<'EOF'
+          window.firebaseConfig = {
+            apiKey: "${{ secrets.FIREBASE_API_KEY }}",
+            authDomain: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+            projectId: "${{ secrets.FIREBASE_PROJECT_ID }}",
+            storageBucket: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+            messagingSenderId: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+            appId: "${{ secrets.FIREBASE_APP_ID }}"
+          };
+          EOF
+
+          cat > env-config.js <<'EOF'
+          window.env = {
+            FIREBASE_API_KEY: "${{ secrets.FIREBASE_API_KEY }}",
+            FIREBASE_AUTH_DOMAIN: "${{ secrets.FIREBASE_AUTH_DOMAIN }}",
+            FIREBASE_PROJECT_ID: "${{ secrets.FIREBASE_PROJECT_ID }}",
+            FIREBASE_STORAGE_BUCKET: "${{ secrets.FIREBASE_STORAGE_BUCKET }}",
+            FIREBASE_MESSAGING_SENDER_ID: "${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}",
+            FIREBASE_APP_ID: "${{ secrets.FIREBASE_APP_ID }}"
+          };
+          EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -44,7 +56,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: .
 
       - name: Deploy to GitHub Pages
         id: deployment

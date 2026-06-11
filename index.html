@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yurt Yönetimi - Yaz Kampı Sistemi</title>
+    <title>Gaye Vakfı Yaz Kampı</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,8 +30,8 @@
     <!-- Giriş ekranı -->
     <div id="loginScreen" class="auth-screen hidden">
         <div class="auth-card">
-            <h1>🏫 Yaz Kampı Sistemi</h1>
-            <p class="auth-subtitle">Yurt yönetimi personeli için giriş. Derse gelen hocaların sisteme erişmesi gerekmez; bilgileri burada yönetilir.</p>
+            <h1>🏫 Gaye Vakfı Yaz Kampı</h1>
+            <p class="auth-subtitle">Yurt yönetimi personeli girişi</p>
             <div class="form-row">
                 <label for="loginEmail">E-posta</label>
                 <input id="loginEmail" type="email" autocomplete="username" placeholder="ornek@yurt.com" />
@@ -53,12 +53,12 @@
         <header class="header">
             <div class="header-top">
                 <div class="header-content">
-                    <h1>🏫 Yurt Yönetimi - Yaz Kampı Sistemi</h1>
-                    <p class="subtitle">Yurt yönetimi paneli — ders hocaları, sınıflar ve öğrenci bilgileri</p>
+                    <h1>🏫 Gaye Vakfı Yaz Kampı</h1>
+                    <p class="subtitle">Yurt yönetim paneli</p>
                 </div>
                 <div class="user-bar">
                     <span id="syncStatus" class="sync-status sync-loading">Yükleniyor...</span>
-                    <span id="userEmail" class="user-email"></span>
+                    <span class="org-brand">Yönetim Paneli</span>
                     <button class="back-btn small-btn" onclick="signOutUser()">Çıkış</button>
                 </div>
             </div>
@@ -218,6 +218,7 @@
     </div>
     </div>
 
+    <script src="env-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
