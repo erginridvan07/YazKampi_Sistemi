@@ -65,6 +65,32 @@ function getErrorMessage(error: unknown): string {
   return 'Bilinmeyen hata oluştu.'
 }
 
+function getLoginTypeMismatchMessage(loginType: LoginType, profile: UserProfile): string | null {
+  const expectedRole: UserRole = loginType === 'yoneticiler' ? 'admin' : 'student'
+
+  if (profile.legacyCollection && profile.legacyCollection !== loginType) {
+    return profile.role === 'admin'
+      ? 'Bu hesap bir yönetici hesabıdır. Lütfen "Yönetici Girişi" seçin.'
+      : 'Bu hesap bir öğrenci hesabıdır. Lütfen "Öğrenci Girişi" seçin.'
+  }
+
+  if (profile.role !== expectedRole) {
+    return profile.role === 'admin'
+      ? 'Bu hesap bir yönetici hesabıdır. Lütfen "Yönetici Girişi" seçin.'
+      : 'Bu hesap bir öğrenci hesabıdır. Lütfen "Öğrenci Girişi" seçin.'
+  }
+
+  return null
+}
+
+async function ensureLoginTypeMatches(loginType: LoginType, profile: UserProfile): Promise<void> {
+  const message = getLoginTypeMismatchMessage(loginType, profile)
+  if (message) {
+    await signOut(auth)
+    throw new Error(message)
+  }
+}
+
 function translateAuthError(code: string | undefined): string | null {
   switch (code) {
     case 'auth/operation-not-allowed':
@@ -171,6 +197,7 @@ async function createProfileFromLegacy(
         await saveUserProfile(profile)
       }
 
+      await ensureLoginTypeMatches(loginType, profile)
       return profile
     }
 
@@ -219,6 +246,7 @@ export async function login(
       await saveUserProfile(profile)
     }
 
+    await ensureLoginTypeMatches(loginType, profile)
     return profile
   } catch (error) {
     const code = getErrorCode(error)
@@ -226,6 +254,13 @@ export async function login(
 
     if (translated && code === 'permission-denied') {
       throw new Error(translated)
+    }
+
+    if (
+      error instanceof Error &&
+      (error.message.includes('yönetici hesabıdır') || error.message.includes('öğrenci hesabıdır'))
+    ) {
+      throw error
     }
 
     const isInvalidLogin =
