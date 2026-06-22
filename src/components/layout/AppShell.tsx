@@ -22,7 +22,9 @@ import { ADMIN_NAV, STUDENT_ATTENDANCE_NAV, STUDENT_NAV } from '@/config/navigat
 import { cn } from '@/lib/utils'
 
 function profilePath(role?: string) {
-  return role === 'admin' ? '/admin/profil' : '/ogrenci/profil'
+  if (role === 'admin') return '/admin/profil'
+  if (role === 'graduate') return '/mezun'
+  return '/ogrenci/profil'
 }
 
 const iconMap = {
@@ -42,6 +44,10 @@ function useNavItems() {
 
   if (profile.role === 'admin') {
     return ADMIN_NAV
+  }
+
+  if (profile.role === 'graduate') {
+    return [{ id: 'mezun', label: 'Mezun Ağı', path: '/mezun', icon: 'graduation-cap' as const }]
   }
 
   if (profile.canManageAttendance) {
@@ -79,7 +85,12 @@ export function AppHeader() {
           <p className="text-sm font-bold">Gaye Vakfı Portal</p>
           {profile ? (
             <p className="text-xs text-primary-100">
-              {profile.adSoyad} · {profile.role === 'admin' ? 'Yönetici' : 'Öğrenci'}
+              {profile.adSoyad} ·{' '}
+              {profile.role === 'admin'
+                ? 'Yönetici'
+                : profile.role === 'graduate'
+                  ? 'Mezun'
+                  : 'Öğrenci'}
             </p>
           ) : null}
         </div>
@@ -131,7 +142,7 @@ function NavLinkItem({
   return (
     <NavLink
       to={path}
-      end={path.endsWith('/admin') || path.endsWith('/ogrenci')}
+      end={path.endsWith('/admin') || path.endsWith('/ogrenci') || path.endsWith('/mezun')}
       className={({ isActive }) =>
         cn(
           'flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition',
@@ -175,7 +186,7 @@ export function SidebarNav() {
               <NavLink
                 key={item.id}
                 to={item.path}
-                end={item.path.endsWith('/admin') || item.path.endsWith('/ogrenci')}
+                end={item.path.endsWith('/admin') || item.path.endsWith('/ogrenci') || item.path.endsWith('/mezun')}
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition',

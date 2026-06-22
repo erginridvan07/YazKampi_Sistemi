@@ -54,7 +54,13 @@ service cloud.firestore {
     }
 
     match /ayarlar/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn() || docId == 'mezun_giris';
+      allow write: if signedIn();
+    }
+
+    match /mezunlar/{docId} {
+      allow read: if signedIn();
+      allow write: if signedIn();
     }
 
     // Ana sayfa icerigi - herkes okuyabilir, giris yapmis yonetici yazabilir

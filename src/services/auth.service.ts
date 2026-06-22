@@ -19,7 +19,10 @@ import {
 } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 import { toAuthEmail, stripUndefined } from '@/lib/utils'
+import { verifyGraduatePortalLogin } from '@/services/graduates.service'
 import type { LegacyUserRecord, LoginType, UserProfile, UserRole } from '@/types'
+
+const GRADUATE_AUTH_USERNAME = 'mezun.portal'
 
 function mapLegacyToProfile(
   uid: string,
@@ -66,6 +69,20 @@ function getErrorMessage(error: unknown): string {
 }
 
 function getLoginTypeMismatchMessage(loginType: LoginType, profile: UserProfile): string | null {
+  if (loginType === 'mezunlar') {
+    if (profile.role !== 'graduate') {
+      if (profile.role === 'admin') {
+        return 'Bu hesap bir yönetici hesabıdır. Lütfen "Yönetici Girişi" seçin.'
+      }
+      return 'Bu hesap bir öğrenci hesabıdır. Lütfen "Öğrenci Girişi" seçin.'
+    }
+    return null
+  }
+
+  if (profile.role === 'graduate') {
+    return 'Bu hesap mezun girişi gerektirir. Lütfen "Mezun Girişi" seçin.'
+  }
+
   const expectedRole: UserRole = loginType === 'yoneticiler' ? 'admin' : 'student'
 
   if (profile.legacyCollection && profile.legacyCollection !== loginType) {
@@ -207,6 +224,48 @@ async function createProfileFromLegacy(
   }
 }
 
+async function loginAsGraduate(username: string, password: string): Promise<UserProfile> {
+  const settings = await verifyGraduatePortalLogin(username, password)
+  const email = toAuthEmail(GRADUATE_AUTH_USERNAME)
+
+  try {
+    const credential = await signInWithEmailAndPassword(auth, email, password)
+    let profile = await fetchUserProfile(credential.user.uid)
+
+    if (!profile || profile.role !== 'graduate') {
+      profile = {
+        uid: credential.user.uid,
+        username: settings.username,
+        adSoyad: 'Mezun',
+        role: 'graduate',
+        legacyCollection: 'mezunlar',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      await saveUserProfile(profile)
+    }
+
+    return profile
+  } catch (error) {
+    const code = getErrorCode(error)
+    const isInvalidLogin =
+      code === 'auth/user-not-found' ||
+      code === 'auth/invalid-credential' ||
+      code === 'auth/invalid-login-credentials' ||
+      code === 'auth/wrong-password'
+
+    if (isInvalidLogin) {
+      throw new Error(
+        'Mezun giriş hesabı henüz hazır değil. Yönetici, Ayarlar bölümünden mezun giriş bilgilerini kaydetmeli.',
+      )
+    }
+
+    const translated = translateAuthError(code)
+    if (translated) throw new Error(translated)
+    throw new Error(getErrorMessage(error))
+  }
+}
+
 export async function login(
   loginType: LoginType,
   username: string,
@@ -223,6 +282,10 @@ export async function login(
   }
 
   await signOut(auth)
+
+  if (loginType === 'mezunlar') {
+    return loginAsGraduate(trimmedUsername, password)
+  }
 
   const email = toAuthEmail(trimmedUsername)
 
@@ -258,7 +321,9 @@ export async function login(
 
     if (
       error instanceof Error &&
-      (error.message.includes('yönetici hesabıdır') || error.message.includes('öğrenci hesabıdır'))
+      (error.message.includes('yönetici hesabıdır') ||
+        error.message.includes('öğrenci hesabıdır') ||
+        error.message.includes('mezun girişi gerektirir'))
     ) {
       throw error
     }

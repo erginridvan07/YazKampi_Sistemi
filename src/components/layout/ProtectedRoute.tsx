@@ -26,7 +26,9 @@ export function ProtectedRoute({
   }
 
   if (!allowedRoles.includes(profile.role)) {
-    return <Navigate to={profile.role === 'admin' ? '/admin' : '/ogrenci'} replace />
+    if (profile.role === 'admin') return <Navigate to="/admin" replace />
+    if (profile.role === 'graduate') return <Navigate to="/mezun" replace />
+    return <Navigate to="/ogrenci" replace />
   }
 
   if (requireAttendancePermission && !profile.canManageAttendance && profile.role !== 'admin') {

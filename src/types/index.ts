@@ -1,4 +1,5 @@
-export type UserRole = 'admin' | 'student'
+export type UserRole = 'admin' | 'student' | 'graduate'
+export type EvlilikDurumu = 'Bekar' | 'Evli' | 'Belirtilmemiş'
 export type LeaveStatus = 'Beklemede' | 'Onaylandı' | 'Reddedildi'
 export type AttendanceStatus = 'Geldi' | 'Gelmedi' | 'İzinli'
 
@@ -13,7 +14,7 @@ export interface UserProfile {
   donem?: string
   canManageAttendance?: boolean
   photoUrl?: string
-  legacyCollection?: 'ogrenciler' | 'yoneticiler'
+  legacyCollection?: 'ogrenciler' | 'yoneticiler' | 'mezunlar'
   legacyDocId?: string
   createdAt?: string
   updatedAt?: string
@@ -158,7 +159,52 @@ export interface ToastMessage {
   description?: string
 }
 
-export type LoginType = 'ogrenciler' | 'yoneticiler'
+export type LoginType = 'ogrenciler' | 'yoneticiler' | 'mezunlar'
+
+export interface GraduateLoginSettings {
+  username: string
+  password: string
+  enabled?: boolean
+  welcomeTitle?: string
+  welcomeMessage?: string
+  updatedAt?: string
+}
+
+export interface Graduate {
+  id: string
+  adSoyad: string
+  girisYili: number
+  bolum?: string
+  mezuniyetYili?: number
+  evlilikDurumu?: EvlilikDurumu
+  cocukSayisi?: number
+  gorev?: string
+  calistigiYer?: string
+  sehir?: string
+  iletisim?: string
+  photoUrl?: string
+  notlar?: string
+  sosyalMedya?: string
+  siraNo?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface GraduateFormData {
+  adSoyad: string
+  girisYili: string
+  bolum: string
+  mezuniyetYili: string
+  evlilikDurumu: EvlilikDurumu
+  cocukSayisi: string
+  gorev: string
+  calistigiYer: string
+  sehir: string
+  iletisim: string
+  photoUrl: string
+  notlar: string
+  sosyalMedya: string
+}
 
 export interface LegacyUserRecord {
   username?: string

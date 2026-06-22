@@ -23,6 +23,7 @@ import {
   StudentHomePage,
   StudentReportsPage,
 } from '@/pages/student'
+import { GraduateHomePage } from '@/pages/graduate'
 import { ProfilePage } from '@/pages/shared/ProfilePage'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -71,6 +72,10 @@ export default function App() {
             <Route path="/admin/ayarlar" element={<AdminSettingsPage />} />
             <Route path="/admin/site" element={<AdminSitePage />} />
             <Route path="/admin/profil" element={<ProfilePage />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedRoles={['graduate']} />}>
+            <Route path="/mezun" element={<GraduateHomePage />} />
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={['student']} />}>

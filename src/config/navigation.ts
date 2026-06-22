@@ -24,6 +24,7 @@ export const STUDENT_ATTENDANCE_NAV = [
 
 export function getDefaultRoute(role: UserRole, canManageAttendance?: boolean): string {
   if (role === 'admin') return '/admin'
+  if (role === 'graduate') return '/mezun'
   if (canManageAttendance) return '/ogrenci'
   return '/ogrenci'
 }

@@ -65,7 +65,7 @@ export function LoginPage() {
           </div>
           <h1 className="text-3xl font-black text-slate-900">Gaye Vakfı Portal</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Öğrenci ve yönetici girişini güvenli şekilde yapın.
+            Öğrenci, yönetici ve mezun girişini güvenli şekilde yapın.
           </p>
         </div>
 
@@ -85,6 +85,7 @@ export function LoginPage() {
             >
               <option value="ogrenciler">Öğrenci Girişi</option>
               <option value="yoneticiler">Yönetici Girişi</option>
+              <option value="mezunlar">Mezun Girişi</option>
             </Select>
 
             <Input

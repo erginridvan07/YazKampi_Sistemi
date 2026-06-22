@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Database, ShieldAlert } from 'lucide-react'
+import { GraduateSettingsSection } from '@/components/admin/GraduateSettingsSection'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
@@ -74,10 +75,12 @@ export function AdminSettingsPage() {
     <div className="page-container">
       <PageHeader
         title="Sistem Ayarları"
-        description="Veri migrasyonu ve güvenlik yapılandırması"
+        description="Mezun ağı, veri migrasyonu ve güvenlik yapılandırması"
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <GraduateSettingsSection />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card accent="primary">
           <div className="flex items-start gap-3">
             <Database className="mt-1 h-6 w-6 text-primary-600" />
