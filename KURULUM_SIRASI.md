@@ -96,7 +96,11 @@ Canlı adres:
 
 (Alternatif: https://yurtyonetimsistemi.firebaseapp.com)
 
-Kodda değişiklik yaptıktan sonra yeniden yayınlamak için:
+Kodda değişiklik yaptıktan sonra:
+
+**Otomatik (önerilen):** `git push` → GitHub Actions canlı siteyi günceller. Detay: `GUNCELLEME_AKISI.md`
+
+**Manuel (yedek):**
 
 ```powershell
 npm run deploy:hosting
