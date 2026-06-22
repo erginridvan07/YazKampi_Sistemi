@@ -8,15 +8,16 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
-import { Spinner } from '@/components/ui/Spinner'
+import { ListSkeleton } from '@/components/ui/ListSkeleton'
 import { Switch } from '@/components/ui/Switch'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BOLUMLER, DONEMLER, ODALAR, SINIFLAR } from '@/config/constants'
+import { CACHE_KEYS, getCachedQuery } from '@/lib/queryCache'
 import { useAsync } from '@/hooks/useAsync'
 import {
   createStudent,
   deleteStudent,
-  fetchStudentsWithPhotos,
+  fetchStudentsList,
   getSinifLabel,
   groupStudentsByBolum,
   importStudentsBatch,
@@ -48,7 +49,11 @@ const emptyForm: StudentFormData = {
 export function AdminStudentsPage() {
   const profile = useAuthStore((s) => s.profile)
   const showToast = useToastStore((s) => s.showToast)
-  const { data: students, loading, reload } = useAsync(fetchStudentsWithPhotos, [])
+  const { data: students, loading, reload } = useAsync(
+    fetchStudentsList,
+    [],
+    () => getCachedQuery(CACHE_KEYS.studentsList),
+  )
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Student | null>(null)
@@ -203,7 +208,14 @@ export function AdminStudentsPage() {
     }
   }
 
-  if (loading) return <Spinner />
+  if (loading && !students) {
+    return (
+      <div className="page-container">
+        <PageHeader title="Öğrenci Yönetimi" description="Kayıtlı öğrencileri görüntüleyin, ekleyin ve düzenleyin." />
+        <ListSkeleton rows={8} />
+      </div>
+    )
+  }
 
   return (
     <div className="page-container">

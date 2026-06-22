@@ -24,7 +24,7 @@ import {
   filterAnnouncementsForDisplay,
 } from '@/services/announcements.service'
 import { fetchPendingLeaves, respondLeaveRequest } from '@/services/leaves.service'
-import { fetchStudents } from '@/services/students.service'
+import { fetchStudentsList } from '@/services/students.service'
 import {
   buildMonthlyAbsenceTrend,
   buildWeeklyAttendanceReport,
@@ -54,7 +54,7 @@ export function AdminDashboardPage() {
   }, [])
 
   const trendQuery = useAsync(async () => {
-    const [students, records] = await Promise.all([fetchStudents(), fetchAttendanceRecords()])
+    const [students, records] = await Promise.all([fetchStudentsList(), fetchAttendanceRecords()])
     const studentNames = students.map((s) => s.adSoyad)
     return {
       monthly: buildMonthlyAbsenceTrend(records, studentNames),

@@ -7,35 +7,50 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { CACHE_KEYS, cachedQuery, invalidateQueryCache } from '@/lib/queryCache'
 import { stripUndefined } from '@/lib/utils'
-import { fetchStudentPhotoMap } from '@/services/profile.service'
 import type { Student, StudentFormData } from '@/types'
 
 const COL = 'ogrenciler'
 
-export async function fetchStudents(): Promise<Student[]> {
+function mapStudentListDoc(docSnap: { id: string; data: () => Record<string, unknown> }): Student | null {
+  const data = docSnap.data()
+  if (data.role === 'admin') return null
+
+  return {
+    id: docSnap.id,
+    adSoyad: String(data.adSoyad ?? ''),
+    username: String(data.username ?? ''),
+    password: data.password ? String(data.password) : undefined,
+    bolum: String(data.bolum ?? ''),
+    sinif: data.sinif as string | number,
+    odaNo: data.odaNo as string | number,
+    donem: data.donem ? String(data.donem) : 'Güz',
+    canManageAttendance: data.canManageAttendance === true,
+    photoUrl: data.photoUrl ? String(data.photoUrl) : undefined,
+  }
+}
+
+async function loadStudentsList(): Promise<Student[]> {
   const snap = await getDocs(collection(db, COL))
   const students: Student[] = []
 
   snap.forEach((docSnap) => {
-    const data = docSnap.data()
-    if (data.role === 'admin') return
-    students.push({ id: docSnap.id, ...data } as Student)
+    const student = mapStudentListDoc(docSnap)
+    if (student) students.push(student)
   })
 
   return students.sort((a, b) => Number(a.odaNo || 999) - Number(b.odaNo || 999))
 }
 
-export async function fetchStudentsWithPhotos(): Promise<Student[]> {
-  const [students, photoMap] = await Promise.all([
-    fetchStudents(),
-    fetchStudentPhotoMap().catch(() => ({} as Record<string, string>)),
-  ])
+/** Liste sayfaları için — not verileri ve büyük alanlar çekilmez. */
+export function fetchStudentsList(): Promise<Student[]> {
+  return cachedQuery(CACHE_KEYS.studentsList, loadStudentsList)
+}
 
-  return students.map((student) => ({
-    ...student,
-    photoUrl: student.photoUrl || photoMap[student.username.trim().toLowerCase()],
-  }))
+/** Geriye dönük uyumluluk — liste görünümü için fetchStudentsList kullanır. */
+export async function fetchStudents(): Promise<Student[]> {
+  return fetchStudentsList()
 }
 
 export function groupStudentsByBolum(students: Student[]): Record<string, Student[]> {
@@ -51,6 +66,10 @@ export function groupStudentsByBolum(students: Student[]): Record<string, Studen
   }
 
   return groups
+}
+
+function bumpStudentsCache() {
+  invalidateQueryCache(CACHE_KEYS.studentsList)
 }
 
 export async function createStudent(data: StudentFormData): Promise<void> {
@@ -70,6 +89,7 @@ export async function createStudent(data: StudentFormData): Promise<void> {
       donemOrtalamalari: {},
     }),
   )
+  bumpStudentsCache()
 }
 
 export async function updateStudent(id: string, data: Partial<StudentFormData>): Promise<void> {
@@ -78,10 +98,12 @@ export async function updateStudent(id: string, data: Partial<StudentFormData>):
   if (data.username) payload.username = data.username.trim()
   if (data.password) payload.password = data.password.trim()
   await updateDoc(doc(db, COL, id), stripUndefined(payload))
+  bumpStudentsCache()
 }
 
 export async function deleteStudent(id: string): Promise<void> {
   await deleteDoc(doc(db, COL, id))
+  bumpStudentsCache()
 }
 
 export async function importStudentsBatch(

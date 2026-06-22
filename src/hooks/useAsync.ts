@@ -7,13 +7,17 @@ interface UseAsyncState<T> {
   reload: () => Promise<void>
 }
 
-export function useAsync<T>(fetcher: () => Promise<T>, deps: unknown[] = []): UseAsyncState<T> {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
+export function useAsync<T>(
+  fetcher: () => Promise<T>,
+  deps: unknown[] = [],
+  getCached?: () => T | null,
+): UseAsyncState<T> {
+  const [data, setData] = useState<T | null>(() => getCached?.() ?? null)
+  const [loading, setLoading] = useState(() => !getCached?.())
   const [error, setError] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
-    setLoading(true)
+    if (!data) setLoading(true)
     setError(null)
     try {
       const result = await fetcher()

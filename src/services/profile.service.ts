@@ -9,6 +9,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { CACHE_KEYS, invalidateQueryCache } from '@/lib/queryCache'
 import { fetchUserProfile } from '@/services/auth.service'
 import type { UserProfile } from '@/types'
 
@@ -38,6 +39,7 @@ async function syncPhotoToStudentRecord(
   try {
     if (profile.legacyDocId && profile.legacyCollection === 'ogrenciler') {
       await updateDoc(doc(db, 'ogrenciler', profile.legacyDocId), payload)
+      invalidateQueryCache(CACHE_KEYS.studentsList)
       return
     }
 
@@ -47,6 +49,7 @@ async function syncPhotoToStudentRecord(
     if (!snap.empty) {
       await updateDoc(doc(db, 'ogrenciler', snap.docs[0].id), payload)
     }
+    invalidateQueryCache(CACHE_KEYS.studentsList)
   } catch {
     // Ogrencli kaydina yazma basarisiz olsa da profil fotografi kaydedilmis kalir
   }

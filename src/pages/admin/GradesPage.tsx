@@ -6,11 +6,12 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 import { GradeEditor } from '@/components/grades/GradeEditor'
+import { CACHE_KEYS, getCachedQuery } from '@/lib/queryCache'
 import { useAsync } from '@/hooks/useAsync'
 import { fetchStudentById, getLatestPeriod, saveStudentGrades } from '@/services/grades.service'
 import { logAudit } from '@/services/audit.service'
 import { downloadGradesPdf } from '@/lib/pdf/gradesPdf'
-import { fetchStudents, getSinifLabel, groupStudentsByBolum } from '@/services/students.service'
+import { fetchStudentsList, getSinifLabel, groupStudentsByBolum } from '@/services/students.service'
 import type { DersNotu, Student } from '@/types'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -18,7 +19,11 @@ import { useToastStore } from '@/stores/toast.store'
 export function AdminGradesPage() {
   const profile = useAuthStore((s) => s.profile)
   const showToast = useToastStore((s) => s.showToast)
-  const { data: students, loading, reload } = useAsync(fetchStudents, [])
+  const { data: students, loading, reload } = useAsync(
+    fetchStudentsList,
+    [],
+    () => getCachedQuery(CACHE_KEYS.studentsList),
+  )
   const [selected, setSelected] = useState<Student | null>(null)
   const [period, setPeriod] = useState('1_Guz')
   const [dersler, setDersler] = useState<DersNotu[]>([])
@@ -69,7 +74,7 @@ export function AdminGradesPage() {
     }
   }
 
-  if (loading) return <Spinner />
+  if (loading && !students) return <Spinner />
   const groups = groupStudentsByBolum(students || [])
 
   return (

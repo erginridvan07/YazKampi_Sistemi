@@ -1,6 +1,6 @@
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { fetchStudents } from '@/services/students.service'
+import { CACHE_KEYS, invalidateQueryCache } from '@/lib/queryCache'
 import type { DersNotu, Student } from '@/types'
 
 export async function fetchStudentById(id: string): Promise<Student | null> {
@@ -10,8 +10,12 @@ export async function fetchStudentById(id: string): Promise<Student | null> {
 }
 
 export async function fetchStudentByUsername(username: string): Promise<Student | null> {
-  const students = await fetchStudents()
-  return students.find((s) => s.username === username) || null
+  const snap = await getDocs(
+    query(collection(db, 'ogrenciler'), where('username', '==', username)),
+  )
+  if (snap.empty) return null
+  const docSnap = snap.docs[0]
+  return { id: docSnap.id, ...docSnap.data() } as Student
 }
 
 export async function saveStudentGrades(
@@ -27,6 +31,7 @@ export async function saveStudentGrades(
     genelOrt: genelOrt,
     lastUpdate: new Date().toISOString(),
   })
+  invalidateQueryCache(CACHE_KEYS.studentsList)
 }
 
 export function getLatestPeriod(akademikNotlar?: Record<string, DersNotu[]>): string {

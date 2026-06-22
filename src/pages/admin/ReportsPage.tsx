@@ -7,6 +7,7 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner } from '@/components/ui/Spinner'
 import { DEVAMSIZLIK_RISK_ESIGI } from '@/config/constants'
+import { CACHE_KEYS, getCachedQuery } from '@/lib/queryCache'
 import { useAsync } from '@/hooks/useAsync'
 import {
   buildCalendarMonth,
@@ -18,7 +19,7 @@ import {
   updateAttendance,
 } from '@/services/attendance.service'
 import { fetchApprovedLeavesRecent } from '@/services/leaves.service'
-import { fetchStudents } from '@/services/students.service'
+import { fetchStudentsList } from '@/services/students.service'
 import { exportDevamsizlikExcel } from '@/lib/excel/studentsExcel'
 import type { AttendanceRecord, AttendanceStatus, Student } from '@/types'
 import { askConfirm } from '@/stores/confirm.store'
@@ -36,8 +37,16 @@ export function AdminReportsPage() {
   const profile = useAuthStore((s) => s.profile)
   const showToast = useToastStore((s) => s.showToast)
 
-  const studentsQuery = useAsync(fetchStudents, [])
-  const recordsQuery = useAsync(fetchAttendanceRecords, [])
+  const studentsQuery = useAsync(
+    fetchStudentsList,
+    [],
+    () => getCachedQuery(CACHE_KEYS.studentsList),
+  )
+  const recordsQuery = useAsync(
+    fetchAttendanceRecords,
+    [],
+    () => getCachedQuery(CACHE_KEYS.attendanceAll),
+  )
   const recentQuery = useAsync(() => fetchRecentAttendance(20), [])
   const leavesQuery = useAsync(() => fetchApprovedLeavesRecent(15), [])
 
@@ -106,7 +115,9 @@ export function AdminReportsPage() {
     }
   }
 
-  if (studentsQuery.loading || recordsQuery.loading) return <Spinner />
+  if ((studentsQuery.loading && !studentsQuery.data) || (recordsQuery.loading && !recordsQuery.data)) {
+    return <Spinner />
+  }
 
   const monthLabel = new Date(year, month).toLocaleString('tr-TR', { month: 'long', year: 'numeric' })
 

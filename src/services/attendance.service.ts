@@ -9,6 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { CACHE_KEYS, cachedQuery, invalidateQueryCache, invalidateQueryCachePrefix } from '@/lib/queryCache'
 import { getMonthYear, parseFlexibleDate, toISO, toLegacyDate, formatDateTR } from '@/lib/dates'
 import { DEVAMSIZLIK_RISK_ESIGI } from '@/config/constants'
 import type {
@@ -24,11 +25,20 @@ import type {
 
 const COL = 'yoklamalar'
 
-export async function fetchAttendanceRecords(): Promise<AttendanceRecord[]> {
+async function loadAttendanceRecords(): Promise<AttendanceRecord[]> {
   const snap = await getDocs(collection(db, COL))
   const records: AttendanceRecord[] = []
   snap.forEach((docSnap) => records.push({ id: docSnap.id, ...docSnap.data() } as AttendanceRecord))
   return records
+}
+
+export function fetchAttendanceRecords(): Promise<AttendanceRecord[]> {
+  return cachedQuery(CACHE_KEYS.attendanceAll, loadAttendanceRecords)
+}
+
+function bumpAttendanceCache() {
+  invalidateQueryCache(CACHE_KEYS.attendanceAll)
+  invalidateQueryCachePrefix('attendance:recent:')
 }
 
 export async function fetchRecentAttendance(limit = 30): Promise<AttendanceRecord[]> {
@@ -83,6 +93,7 @@ export async function saveAttendance(data: {
     izinliOgrenciler: izinliler,
     kaydeden: data.kaydeden,
   })
+  bumpAttendanceCache()
 }
 
 export async function updateAttendance(
@@ -107,10 +118,12 @@ export async function updateAttendance(
     sonDuzenleyen: editorName,
     duzenlemeTarihi: new Date(),
   })
+  bumpAttendanceCache()
 }
 
 export async function deleteAttendance(id: string): Promise<void> {
   await deleteDoc(doc(db, COL, id))
+  bumpAttendanceCache()
 }
 
 export function countMonthlyAbsences(
