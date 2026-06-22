@@ -1,0 +1,8 @@
+export { AdminDashboardPage } from './DashboardPage'
+export { AdminStudentsPage } from './StudentsPage'
+export { AttendancePage as AdminAttendancePage } from '@/pages/shared/AttendancePage'
+export { AnnouncementsPage as AdminAnnouncementsPage } from '@/pages/shared/AnnouncementsPage'
+export { AdminGradesPage } from './GradesPage'
+export { AdminReportsPage } from './ReportsPage'
+export { AdminSettingsPage } from './SettingsPage'
+export { AdminSitePage } from './SitePage'

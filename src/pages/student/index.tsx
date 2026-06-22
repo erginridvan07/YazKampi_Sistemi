@@ -1,0 +1,5 @@
+export { StudentHomePage } from './HomePage'
+export { StudentGradesPage } from './GradesPage'
+export { StudentReportsPage } from './ReportsPage'
+export { AttendancePage as StudentAttendancePage } from '@/pages/shared/AttendancePage'
+export { AnnouncementsPage as StudentAnnouncementsPage } from '@/pages/shared/AnnouncementsPage'

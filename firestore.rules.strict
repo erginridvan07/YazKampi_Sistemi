@@ -1,0 +1,79 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && userDoc().data.role == 'admin';
+    }
+
+    function isStudent() {
+      return signedIn() && userDoc().data.role == 'student';
+    }
+
+    // Legacy koleksiyonlar — sadece giris yapmis kullanicilar okuyabilir
+    match /ogrenciler/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /yoneticiler/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /yoklamalar/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && (isAdmin() || userDoc().data.canManageAttendance == true);
+      allow delete: if isAdmin();
+    }
+
+    match /duyurular/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || userDoc().data.canManageAttendance == true;
+    }
+
+    match /evciTalepleri/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && isStudent();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /gunluk_gorevler/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || userDoc().data.canManageAttendance == true;
+    }
+
+    match /islem_loglari/{docId} {
+      allow read: if isAdmin();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /ayarlar/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /site_ayarlari/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
