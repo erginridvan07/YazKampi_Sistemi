@@ -19,6 +19,48 @@ import { logAudit } from '@/services/audit.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
 
+function ParagraphEditor({
+  items,
+  onChange,
+  labelPrefix = 'Paragraf',
+}: {
+  items: string[]
+  onChange: (items: string[]) => void
+  labelPrefix?: string
+}) {
+  return (
+    <div>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <div key={i} className="flex gap-2">
+            <Textarea
+              id={`paragraph-${labelPrefix}-${i}`}
+              label={`${labelPrefix} ${i + 1}`}
+              value={item}
+              onChange={(e) => {
+                const next = [...items]
+                next[i] = e.target.value
+                onChange(next)
+              }}
+            />
+            <Button
+              variant="danger"
+              size="icon"
+              className="mt-6 shrink-0"
+              onClick={() => onChange(items.filter((_, j) => j !== i))}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button variant="secondary" size="sm" className="mt-2" onClick={() => onChange([...items, ''])}>
+        <Plus className="h-4 w-4" /> Paragraf Ekle
+      </Button>
+    </div>
+  )
+}
+
 function BulletEditor({
   items,
   onChange,
@@ -231,14 +273,20 @@ export function AdminSitePage() {
             <div className="space-y-4">
               <Input id="misyon-title" label="Misyon başlığı" value={content.misyon.title}
                 onChange={(e) => setContent({ ...content, misyon: { ...content.misyon, title: e.target.value } })} />
-              <Textarea id="misyon-content" label="Misyon metni" value={content.misyon.content}
-                onChange={(e) => setContent({ ...content, misyon: { ...content.misyon, content: e.target.value } })} />
+              <ParagraphEditor
+                labelPrefix="Misyon paragrafı"
+                items={content.misyon.paragraphs}
+                onChange={(paragraphs) => setContent({ ...content, misyon: { ...content.misyon, paragraphs } })}
+              />
             </div>
             <div className="space-y-4">
               <Input id="vizyon-title" label="Vizyon başlığı" value={content.vizyon.title}
                 onChange={(e) => setContent({ ...content, vizyon: { ...content.vizyon, title: e.target.value } })} />
-              <Textarea id="vizyon-content" label="Vizyon metni" value={content.vizyon.content}
-                onChange={(e) => setContent({ ...content, vizyon: { ...content.vizyon, content: e.target.value } })} />
+              <ParagraphEditor
+                labelPrefix="Vizyon paragrafı"
+                items={content.vizyon.paragraphs}
+                onChange={(paragraphs) => setContent({ ...content, vizyon: { ...content.vizyon, paragraphs } })}
+              />
               <BulletEditor
                 label="Vizyon maddeleri"
                 items={content.vizyon.bullets}

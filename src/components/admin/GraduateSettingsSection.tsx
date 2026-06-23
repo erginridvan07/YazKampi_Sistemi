@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GraduationCap, Pencil, Plus, Trash2, Users } from 'lucide-react'
+import { ImageUploadField } from '@/components/admin/ImageUploadField'
+import { PROFILE_IMAGE_OPTS } from '@/lib/avatar'
 import { Button } from '@/components/ui/Button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -404,14 +406,19 @@ export function GraduateSettingsSection() {
               setGraduateForm((prev) => ({ ...prev, sosyalMedya: event.target.value }))
             }
           />
-          <Input
-            id="graduate-photo"
-            label="Fotoğraf URL (isteğe bağlı)"
-            value={graduateForm.photoUrl}
-            onChange={(event) =>
-              setGraduateForm((prev) => ({ ...prev, photoUrl: event.target.value }))
-            }
-          />
+          <div className="sm:col-span-2">
+            <ImageUploadField
+              id="graduate-photo"
+              label="Fotoğraf (isteğe bağlı)"
+              value={graduateForm.photoUrl}
+              compressOptions={PROFILE_IMAGE_OPTS}
+              showUrlInput={false}
+              previewClassName="h-28 w-28 rounded-2xl"
+              helperText="JPG, PNG veya WebP · Kaydet/Güncelle ile yayınlanır"
+              onChange={(photoUrl) => setGraduateForm((prev) => ({ ...prev, photoUrl }))}
+              onClear={() => setGraduateForm((prev) => ({ ...prev, photoUrl: '' }))}
+            />
+          </div>
           <div className="sm:col-span-2">
             <Textarea
               id="graduate-notes"

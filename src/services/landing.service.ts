@@ -1,20 +1,50 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { DEFAULT_LANDING_CONTENT, type LandingContent } from '@/config/landing'
-import { db, storage } from '@/lib/firebase'
+import { CACHE_KEYS, cachedQuery, getCachedQuery, invalidateQueryCache } from '@/lib/queryCache'
 import { deepStripUndefined } from '@/lib/utils'
 
 const PREVIEW_DRAFT_KEY = 'landing_preview_draft'
+const LANDING_PERSIST_KEY = 'landing_content_v1'
+const LANDING_CACHE_TTL = 30 * 60_000
 
-function mergeLandingContent(data: Partial<LandingContent>): LandingContent {
+function normalizeParagraphs(
+  paragraphs: string[] | undefined,
+  legacyContent: string | undefined,
+  fallback: string[],
+): string[] {
+  const cleaned = paragraphs?.map((p) => p.trim()).filter(Boolean)
+  if (cleaned?.length) return cleaned
+  if (legacyContent?.trim()) return [legacyContent.trim()]
+  return fallback
+}
+
+function mergeLandingContent(data: Partial<LandingContent> & {
+  misyon?: { content?: string; paragraphs?: string[]; title?: string }
+  vizyon?: { content?: string; paragraphs?: string[]; title?: string; bullets?: string[] }
+}): LandingContent {
   return {
     ...DEFAULT_LANDING_CONTENT,
     ...data,
     hero: { ...DEFAULT_LANDING_CONTENT.hero, ...data.hero },
     hakkimizda: { ...DEFAULT_LANDING_CONTENT.hakkimizda, ...data.hakkimizda },
     kurucu: { ...DEFAULT_LANDING_CONTENT.kurucu, ...data.kurucu },
-    misyon: { ...DEFAULT_LANDING_CONTENT.misyon, ...data.misyon },
-    vizyon: { ...DEFAULT_LANDING_CONTENT.vizyon, ...data.vizyon },
+    misyon: {
+      ...DEFAULT_LANDING_CONTENT.misyon,
+      ...data.misyon,
+      paragraphs: normalizeParagraphs(
+        data.misyon?.paragraphs,
+        data.misyon?.content,
+        DEFAULT_LANDING_CONTENT.misyon.paragraphs,
+      ),
+    },
+    vizyon: {
+      ...DEFAULT_LANDING_CONTENT.vizyon,
+      ...data.vizyon,
+      paragraphs: normalizeParagraphs(
+        data.vizyon?.paragraphs,
+        data.vizyon?.content,
+        DEFAULT_LANDING_CONTENT.vizyon.paragraphs,
+      ),
+    },
     iletisim: { ...DEFAULT_LANDING_CONTENT.iletisim, ...data.iletisim },
     galeri: data.galeri?.length ? data.galeri : DEFAULT_LANDING_CONTENT.galeri,
   }
@@ -41,15 +71,60 @@ function getErrorCode(error: unknown): string | undefined {
   return undefined
 }
 
-export async function fetchLandingContent(): Promise<LandingContent> {
+export function readPersistedLandingContent(): LandingContent | null {
   try {
-    const snap = await getDoc(doc(db, 'site_ayarlari', 'landing'))
-    if (!snap.exists()) return DEFAULT_LANDING_CONTENT
-    const data = snap.data() as Partial<LandingContent>
+    const raw = localStorage.getItem(LANDING_PERSIST_KEY)
+    if (!raw) return null
+    const { data, at } = JSON.parse(raw) as { data: Partial<LandingContent>; at: number }
+    if (Date.now() - at > LANDING_CACHE_TTL) return null
     return mergeLandingContent(data)
   } catch {
-    return DEFAULT_LANDING_CONTENT
+    return null
   }
+}
+
+function persistLandingContent(content: LandingContent): void {
+  try {
+    localStorage.setItem(
+      LANDING_PERSIST_KEY,
+      JSON.stringify({ data: content, at: Date.now() }),
+    )
+  } catch {
+    // localStorage dolu veya devre dışı
+  }
+}
+
+export function getInitialLandingContent(): LandingContent {
+  return readPersistedLandingContent() ?? DEFAULT_LANDING_CONTENT
+}
+
+export async function fetchLandingContent(): Promise<LandingContent> {
+  const memoryHit = getCachedQuery<LandingContent>(CACHE_KEYS.landingContent, LANDING_CACHE_TTL)
+  if (memoryHit) return memoryHit
+
+  return cachedQuery(
+    CACHE_KEYS.landingContent,
+    async () => {
+      try {
+        const [{ db }, { doc, getDoc }] = await Promise.all([
+          import('@/lib/firebase'),
+          import('firebase/firestore'),
+        ])
+        const snap = await getDoc(doc(db, 'site_ayarlari', 'landing'))
+        if (!snap.exists()) {
+          persistLandingContent(DEFAULT_LANDING_CONTENT)
+          return DEFAULT_LANDING_CONTENT
+        }
+        const content = mergeLandingContent(snap.data() as Partial<LandingContent>)
+        persistLandingContent(content)
+        return content
+      } catch {
+        const fallback = readPersistedLandingContent() ?? DEFAULT_LANDING_CONTENT
+        return fallback
+      }
+    },
+    LANDING_CACHE_TTL,
+  )
 }
 
 export async function saveLandingContent(
@@ -63,7 +138,13 @@ export async function saveLandingContent(
   })
 
   try {
+    const [{ db }, { doc, setDoc }] = await Promise.all([
+      import('@/lib/firebase'),
+      import('firebase/firestore'),
+    ])
     await setDoc(doc(db, 'site_ayarlari', 'landing'), payload)
+    invalidateQueryCache(CACHE_KEYS.landingContent)
+    persistLandingContent(content)
     clearLandingPreviewDraft()
   } catch (error) {
     const code = getErrorCode(error)
@@ -101,6 +182,10 @@ export function clearLandingPreviewDraft(): void {
 }
 
 export async function uploadLandingImage(file: File, folder: string): Promise<string> {
+  const [{ storage }, { getDownloadURL, ref, uploadBytes }] = await Promise.all([
+    import('@/lib/firebase'),
+    import('firebase/storage'),
+  ])
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const path = `landing/${folder}/${Date.now()}_${safeName}`
   const storageRef = ref(storage, path)

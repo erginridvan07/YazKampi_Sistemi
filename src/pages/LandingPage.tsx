@@ -16,11 +16,14 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
-import { Spinner } from '@/components/ui/Spinner'
 import { GalleryCarousel } from '@/components/landing/GalleryCarousel'
 import { GalleryImage } from '@/components/landing/GalleryImage'
 import { DEFAULT_LANDING_CONTENT, type LandingContent } from '@/config/landing'
-import { fetchLandingContent, readLandingPreviewDraft } from '@/services/landing.service'
+import {
+  fetchLandingContent,
+  getInitialLandingContent,
+  readLandingPreviewDraft,
+} from '@/services/landing.service'
 import { useAuthStore } from '@/stores/auth.store'
 
 const features = [
@@ -44,8 +47,12 @@ export function LandingPage() {
   const profile = useAuthStore((s) => s.profile)
   const [searchParams] = useSearchParams()
   const isPreview = searchParams.get('onizle') === '1'
-  const [content, setContent] = useState<LandingContent>(DEFAULT_LANDING_CONTENT)
-  const [loading, setLoading] = useState(true)
+  const [content, setContent] = useState<LandingContent>(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('onizle') === '1') {
+      return readLandingPreviewDraft() ?? DEFAULT_LANDING_CONTENT
+    }
+    return getInitialLandingContent()
+  })
   const [previewDraftMissing, setPreviewDraftMissing] = useState(false)
 
   useEffect(() => {
@@ -54,7 +61,6 @@ export function LandingPage() {
       if (draft) {
         setContent(draft)
         setPreviewDraftMissing(false)
-        setLoading(false)
         return
       }
       setPreviewDraftMissing(true)
@@ -62,18 +68,8 @@ export function LandingPage() {
       setPreviewDraftMissing(false)
     }
 
-    fetchLandingContent()
-      .then(setContent)
-      .finally(() => setLoading(false))
+    void fetchLandingContent().then(setContent)
   }, [isPreview])
-
-  if (loading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Spinner label="Sayfa yükleniyor..." />
-      </div>
-    )
-  }
 
   const contact = [
     { icon: MapPin, title: 'Adres', value: content.iletisim.address },
@@ -193,11 +189,19 @@ export function LandingPage() {
           <div className="mt-8 grid gap-8 lg:grid-cols-2">
             <div>
               <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100">{content.misyon.title}</h2>
-              <p className="mt-4 leading-7 text-slate-600 dark:text-slate-400">{content.misyon.content}</p>
+              <div className="mt-4 space-y-4">
+                {content.misyon.paragraphs.map((p, i) => (
+                  <p key={i} className="leading-7 text-slate-600 dark:text-slate-400">{p}</p>
+                ))}
+              </div>
             </div>
             <Card accent="primary">
               <CardTitle>{content.vizyon.title}</CardTitle>
-              <CardDescription className="mt-2 leading-7">{content.vizyon.content}</CardDescription>
+              <div className="mt-2 space-y-4">
+                {content.vizyon.paragraphs.map((p, i) => (
+                  <CardDescription key={i} className="leading-7">{p}</CardDescription>
+                ))}
+              </div>
               <ul className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
                 {content.vizyon.bullets.map((b) => (
                   <li key={b}>• {b}</li>

@@ -6,6 +6,7 @@ export const CACHE_KEYS = {
   studentsList: 'students:list',
   attendanceAll: 'attendance:all',
   attendanceRecent: (limit: number) => `attendance:recent:${limit}`,
+  landingContent: 'landing:content',
 } as const
 
 export function getCachedQuery<T>(key: string, maxAgeMs = 5 * 60_000): T | null {

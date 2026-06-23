@@ -31,6 +31,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+        globIgnores: ['**/pdfmake-*.js', '**/vfs_fonts-*.js', '**/xlsx-*.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {
@@ -48,6 +49,24 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/firebase')) return 'firebase'
+          if (id.includes('pdfmake') || id.includes('vfs_fonts')) return 'pdf'
+          if (id.includes('/xlsx') || id.includes('node_modules/xlsx')) return 'xlsx'
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/react-router')
+          ) {
+            return 'vendor'
+          }
+        },
+      },
     },
   },
 })

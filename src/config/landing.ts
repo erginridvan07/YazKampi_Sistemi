@@ -27,11 +27,11 @@ export interface LandingContent {
   }
   misyon: {
     title: string
-    content: string
+    paragraphs: string[]
   }
   vizyon: {
     title: string
-    content: string
+    paragraphs: string[]
     bullets: string[]
   }
   galeri: GalleryItem[]
@@ -75,13 +75,15 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   },
   misyon: {
     title: 'Misyonumuz',
-    content:
+    paragraphs: [
       'Her öğrenci için güvenli, düzenli ve şeffaf bir yurt yönetimi sağlayarak akademik başarıya destek olmak.',
+    ],
   },
   vizyon: {
     title: 'Vizyonumuz',
-    content:
+    paragraphs: [
       'Öğrencilerin hem akademik hem sosyal gelişimini destekleyen, modern ve sıcak bir yurt ortamı kurmak.',
+    ],
     bullets: ['Şeffaf süreç yönetimi', 'Hızlı karar alma', 'Öğrenci odaklı yaklaşım'],
   },
   galeri: [
