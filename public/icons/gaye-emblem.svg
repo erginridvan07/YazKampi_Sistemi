@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gaye Vakfi">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <g fill="#1a7f72">
+    <path d="M256 108c-52 0-94 38-94 85v8h24v-8c0-38 31-69 70-69s70 31 70 69v8h24v-8c0-47-42-85-94-85z"/>
+    <path d="M162 201h188v22c0 48-42 87-94 87s-94-39-94-87v-22z"/>
+    <path d="M214 318h84l-12 42h-60l-12-42z"/>
+    <path d="M248 88h16v28h-16z"/>
+    <circle cx="256" cy="82" r="14"/>
+    <path d="M196 368c0-18 27-32 60-32s60 14 60 32v12H196v-12zm60-20c-22 0-40 8-44 18 8-6 24-10 44-10s36 4 44 10c-4-10-22-18-44-18z"/>
+  </g>
+  <text x="332" y="168" font-family="Georgia, serif" font-size="30" font-weight="600" fill="#1a7f72">1994</text>
+  <text x="256" y="430" text-anchor="middle" font-family="Georgia, serif" font-size="44" font-style="italic" fill="#1a7f72">gaye vakf&#305;</text>
+</svg>
