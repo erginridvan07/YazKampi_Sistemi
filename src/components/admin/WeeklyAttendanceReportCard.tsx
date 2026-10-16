@@ -1,4 +1,8 @@
+import { useState } from 'react'
+import { FileDown } from 'lucide-react'
 import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { downloadWeeklyAttendancePdf } from '@/lib/pdf/weeklyAttendancePdf'
 import { cn } from '@/lib/utils'
 import type { VakitAttendanceCounts, WeeklyAttendanceReport } from '@/types'
 
@@ -12,7 +16,7 @@ function CountCell({
   empty?: boolean
 }) {
   if (empty) {
-    return <span className="text-slate-300 dark:text-slate-600">—</span>
+    return <span className="text-slate-300 dark:text-slate-500">—</span>
   }
 
   const toneClass = {
@@ -63,12 +67,46 @@ interface WeeklyAttendanceReportCardProps {
 }
 
 export function WeeklyAttendanceReportCard({ data }: WeeklyAttendanceReportCardProps) {
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadFailed, setDownloadFailed] = useState(false)
+
+  const handleDownload = async () => {
+    setDownloadFailed(false)
+    setIsDownloading(true)
+    try {
+      await downloadWeeklyAttendancePdf(data)
+    } catch {
+      setDownloadFailed(true)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <Card accent="primary">
-      <CardTitle>Haftalık Rapor Analizi</CardTitle>
-      <CardDescription>
-        Bu hafta ({data.haftaLabel}) — gün gün Sabah ve Yatsı yoklama özeti
-      </CardDescription>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <CardTitle>Haftalık Rapor Analizi</CardTitle>
+          <CardDescription>
+            Bu hafta ({data.haftaLabel}) — gün gün Sabah ve Yatsı yoklama özeti
+          </CardDescription>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full shrink-0 sm:w-auto"
+          onClick={() => void handleDownload()}
+          disabled={isDownloading}
+        >
+          <FileDown className="h-4 w-4" /> {isDownloading ? 'PDF hazırlanıyor...' : 'PDF İndir'}
+        </Button>
+      </div>
+
+      {downloadFailed ? (
+        <p role="alert" className="mt-3 text-sm text-rose-600 dark:text-rose-400">
+          PDF hazırlanamadı. Lütfen tekrar deneyin.
+        </p>
+      ) : null}
 
       <div className="mt-6 hidden overflow-x-auto lg:block">
         <table className="w-full min-w-[640px] border-collapse text-sm">
@@ -126,7 +164,7 @@ export function WeeklyAttendanceReportCard({ data }: WeeklyAttendanceReportCardP
           >
             <div className="mb-3 flex items-center justify-between">
               <p className="font-bold text-slate-900 dark:text-slate-100">{gun.gunLabel}</p>
-              <p className="text-sm text-slate-500">{gun.tarihLabel}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{gun.tarihLabel}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <VakitBlock title="Sabah" counts={gun.sabah} />

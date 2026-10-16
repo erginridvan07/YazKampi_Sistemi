@@ -117,12 +117,12 @@ export function subscribeForegroundMessages(
 }
 
 export function subscribeStudentLeaveUpdates(
-  studentName: string,
+  ownerUid: string,
   onUpdate: (durum: string, gidisTarihi: string) => void,
 ): () => void {
   const q = query(
     collection(db, 'evciTalepleri'),
-    where('ogrenciAd', '==', studentName),
+    where('ownerUid', '==', ownerUid),
   )
 
   let initial = true

@@ -1,10 +1,4 @@
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  updatePassword,
-} from 'firebase/auth'
-import {
   addDoc,
   collection,
   deleteDoc,
@@ -16,15 +10,24 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
-import { stripUndefined, toAuthEmail } from '@/lib/utils'
-import type { Graduate, GraduateFormData, GraduateLoginSettings } from '@/types'
+import { db } from '@/lib/firebase'
+import { stripUndefined } from '@/lib/utils'
+import type { Graduate, GraduateFormData, GraduateWelcomeSettings } from '@/types'
 
 const GRADUATES_COL = 'mezunlar'
-const GRADUATE_AUTH_USERNAME = 'mezun.portal'
+const WELCOME_COL = 'mezun_ayarlar'
+const WELCOME_DOC_ID = 'karsilama'
 
-function loginDocRef() {
-  return doc(db, 'ayarlar', 'mezun_giris')
+/** S5.3-P2: mezunlar field visibility (adSoyad/bölüm/yıl/şehir/görev/photo vs admin-only notlar) is unchanged here. */
+/** S5.3-P3.1 debt: leftover welcomeTitle/welcomeMessage on ayarlar/mezun_giris are unused by client; do not live-delete here. */
+
+export const DEFAULT_GRADUATE_WELCOME: GraduateWelcomeSettings = {
+  welcomeTitle: 'Mezun Ağı',
+  welcomeMessage: 'Yurt arkadaşlarınızın güncel hayat hikâyelerini keşfedin.',
+}
+
+function welcomeDocRef() {
+  return doc(db, WELCOME_COL, WELCOME_DOC_ID)
 }
 
 export const EMPTY_GRADUATE_FORM: GraduateFormData = {
@@ -41,10 +44,6 @@ export const EMPTY_GRADUATE_FORM: GraduateFormData = {
   photoUrl: '',
   notlar: '',
   sosyalMedya: '',
-}
-
-function graduateAuthEmail(): string {
-  return toAuthEmail(GRADUATE_AUTH_USERNAME)
 }
 
 function mapGraduate(id: string, data: Record<string, unknown>): Graduate {
@@ -92,108 +91,44 @@ function formToPayload(form: GraduateFormData): Record<string, unknown> {
   })
 }
 
-export async function fetchGraduateLoginSettings(): Promise<GraduateLoginSettings | null> {
-  const snap = await getDoc(loginDocRef())
-  if (!snap.exists()) return null
-  return snap.data() as GraduateLoginSettings
+function mapWelcome(data: Record<string, unknown> | undefined): GraduateWelcomeSettings {
+  const title = typeof data?.welcomeTitle === 'string' ? data.welcomeTitle.trim() : ''
+  const message = typeof data?.welcomeMessage === 'string' ? data.welcomeMessage.trim() : ''
+  return {
+    welcomeTitle: title || DEFAULT_GRADUATE_WELCOME.welcomeTitle,
+    welcomeMessage: message || DEFAULT_GRADUATE_WELCOME.welcomeMessage,
+    updatedAt: typeof data?.updatedAt === 'string' ? data.updatedAt : undefined,
+  }
 }
 
-export async function verifyGraduatePortalLogin(
-  username: string,
-  password: string,
-): Promise<GraduateLoginSettings> {
-  const settings = await fetchGraduateLoginSettings()
-  if (!settings?.username || !settings.password) {
-    throw new Error('Mezun girişi henüz yapılandırılmamış. Yöneticiye başvurun.')
-  }
-  if (settings.enabled === false) {
-    throw new Error('Mezun girişi geçici olarak kapalı.')
-  }
-  if (username.trim() !== settings.username || password !== settings.password) {
-    throw new Error('Hatalı kullanıcı adı veya şifre.')
-  }
-  return settings
-}
-
-async function ensureGraduateUserProfile(uid: string, settings: Pick<GraduateLoginSettings, 'username'>): Promise<void> {
-  await setDoc(
-    doc(db, 'users', uid),
-    stripUndefined({
-      uid,
-      username: settings.username,
-      adSoyad: 'Mezun',
-      role: 'graduate',
-      legacyCollection: 'mezunlar',
-      updatedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    }),
-    { merge: true },
-  )
-}
-
-/** Mezun Firebase hesabını oluşturur veya şifresini günceller (yönetici kaydı sırasında). */
-export async function syncGraduateFirebaseAccount(
-  newPassword: string,
-  portalUsername: string,
-  previousPassword?: string,
-): Promise<'created' | 'updated' | 'unchanged'> {
-  const email = graduateAuthEmail()
-
-  if (previousPassword && previousPassword !== newPassword) {
-    const credential = await signInWithEmailAndPassword(auth, email, previousPassword)
-    await updatePassword(credential.user, newPassword)
-    await ensureGraduateUserProfile(credential.user.uid, { username: portalUsername })
-    await signOut(auth)
-    return 'updated'
-  }
-
+/**
+ * Direct getDoc(mezun_ayarlar/karsilama). Never lists. Never reads ayarlar/mezun_giris.
+ * Missing/denied document → safe defaults; caller page must not break.
+ */
+export async function fetchGraduateWelcomeSettings(): Promise<GraduateWelcomeSettings> {
   try {
-    const credential = await createUserWithEmailAndPassword(auth, email, newPassword)
-    await ensureGraduateUserProfile(credential.user.uid, { username: portalUsername })
-    await signOut(auth)
-    return 'created'
-  } catch (error) {
-    const code =
-      typeof error === 'object' && error !== null && 'code' in error
-        ? String((error as { code: string }).code)
-        : undefined
-
-    if (code === 'auth/email-already-in-use') {
-      const credential = await signInWithEmailAndPassword(auth, email, newPassword)
-      await ensureGraduateUserProfile(credential.user.uid, { username: portalUsername })
-      await signOut(auth)
-      return 'unchanged'
-    }
-
-    throw error
+    const snap = await getDoc(welcomeDocRef())
+    if (!snap.exists()) return DEFAULT_GRADUATE_WELCOME
+    return mapWelcome(snap.data() as Record<string, unknown>)
+  } catch {
+    return DEFAULT_GRADUATE_WELCOME
   }
 }
 
-export async function saveGraduateLoginSettings(
-  settings: GraduateLoginSettings,
-  previousPassword?: string,
-): Promise<'created' | 'updated' | 'unchanged' | 'settings-only'> {
-  const payload: GraduateLoginSettings = {
-    ...settings,
-    username: settings.username.trim(),
-    password: settings.password,
-    enabled: settings.enabled !== false,
-    welcomeTitle: settings.welcomeTitle?.trim() || 'Mezun Ağı',
-    welcomeMessage:
-      settings.welcomeMessage?.trim() ||
-      'Yurt arkadaşlarınızın güncel hayat hikâyelerini keşfedin.',
+/**
+ * Admin create/update of mezun_ayarlar/karsilama only.
+ * Never writes password, username, enabled, uid, role, or ayarlar/mezun_giris.
+ */
+export async function saveGraduateWelcomeSettings(
+  settings: Pick<GraduateWelcomeSettings, 'welcomeTitle' | 'welcomeMessage'>,
+): Promise<void> {
+  const payload = {
+    welcomeTitle: settings.welcomeTitle?.trim() || DEFAULT_GRADUATE_WELCOME.welcomeTitle,
+    welcomeMessage: settings.welcomeMessage?.trim() || DEFAULT_GRADUATE_WELCOME.welcomeMessage,
     updatedAt: new Date().toISOString(),
   }
 
-  await setDoc(loginDocRef(), stripUndefined({ ...payload } as Record<string, unknown>), { merge: true })
-
-  if (previousPassword === undefined) {
-    return syncGraduateFirebaseAccount(settings.password, settings.username)
-  }
-  if (previousPassword !== settings.password) {
-    return syncGraduateFirebaseAccount(settings.password, settings.username, previousPassword)
-  }
-  return 'settings-only'
+  await setDoc(welcomeDocRef(), payload)
 }
 
 export async function fetchGraduates(): Promise<Graduate[]> {

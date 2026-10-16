@@ -4,12 +4,18 @@
 
 @theme {
   --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Indigo scale — fills missing steps used by dark: utilities */
   --color-primary-50: #eef2ff;
   --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
   --color-primary-500: #6366f1;
   --color-primary-600: #4f46e5;
   --color-primary-700: #4338ca;
   --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
 }
 
 @layer base {
@@ -25,11 +31,25 @@
 
   #root {
     min-height: 100dvh;
+    max-width: 100%;
+    overflow-x: clip;
   }
 }
 
 @layer utilities {
   .page-container {
-    @apply mx-auto w-full max-w-6xl px-4 py-6 pb-28 lg:pb-8;
+    @apply mx-auto w-full max-w-6xl px-4 py-6 lg:pb-8;
+    /* FAB (~58px) + pad + safe-area — keep last content above radial nav */
+    padding-bottom: calc(6.75rem + env(safe-area-inset-bottom, 0px));
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: clip;
+  }
+
+  @media (min-width: 1024px) {
+    .page-container {
+      padding-bottom: 2rem;
+      overflow-x: visible;
+    }
   }
 }

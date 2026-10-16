@@ -4,17 +4,15 @@ import { logger } from 'firebase-functions'
 
 admin.initializeApp()
 
-async function getTokensByAdSoyad(adSoyad: string): Promise<string[]> {
-  const snap = await admin
-    .firestore()
-    .collection('users')
-    .where('adSoyad', '==', adSoyad)
-    .limit(1)
-    .get()
+async function getTokensByOwnerUid(ownerUid: string): Promise<string[]> {
+  const uid = typeof ownerUid === 'string' ? ownerUid.trim() : ''
+  if (!uid) return []
 
-  if (snap.empty) return []
-  const data = snap.docs[0].data()
-  const tokens = data.fcmTokens
+  const snap = await admin.firestore().collection('users').doc(uid).get()
+  if (!snap.exists) return []
+
+  const data = snap.data()
+  const tokens = data?.fcmTokens
   return Array.isArray(tokens) ? tokens.filter(Boolean) : []
 }
 
@@ -68,7 +66,7 @@ export const onLeaveRequestUpdated = onDocumentUpdated(
     if (!before || !after) return
     if (before.durum !== 'Beklemede' || after.durum === 'Beklemede') return
 
-    const tokens = await getTokensByAdSoyad(after.ogrenciAd)
+    const tokens = await getTokensByOwnerUid(String(after.ownerUid ?? ''))
     const approved = after.durum === 'Onaylandı'
     await sendPush(
       tokens,

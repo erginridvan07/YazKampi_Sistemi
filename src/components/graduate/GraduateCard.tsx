@@ -25,7 +25,7 @@ export function GraduateCard({ graduate }: GraduateCardProps) {
         : 'default'
 
   return (
-    <Card className="group overflow-hidden border-slate-200/80 p-0 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg dark:border-slate-800">
+    <Card className="group overflow-hidden border-slate-200/80 p-0 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-lg dark:border-slate-800 dark:hover:border-primary-700 dark:hover:shadow-slate-950/50">
       <div className="bg-gradient-to-br from-primary-600 via-primary-700 to-indigo-800 px-5 py-4 text-white">
         <div className="flex items-center gap-4">
           <ProfileAvatar
@@ -67,21 +67,21 @@ export function GraduateCard({ graduate }: GraduateCardProps) {
 
         {graduate.gorev ? (
           <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
-            <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+            <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
             <span>{graduate.gorev}</span>
           </div>
         ) : null}
 
         {graduate.calistigiYer ? (
           <div className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
-            <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+            <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
             <span>{graduate.calistigiYer}</span>
           </div>
         ) : null}
 
         {graduate.sehir ? (
           <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
             <span>{graduate.sehir}</span>
           </div>
         ) : null}
@@ -94,7 +94,7 @@ export function GraduateCard({ graduate }: GraduateCardProps) {
         ) : null}
 
         {graduate.iletisim ? (
-          <p className="text-xs font-medium text-slate-500">{graduate.iletisim}</p>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{graduate.iletisim}</p>
         ) : null}
 
         {graduate.sosyalMedya ? (

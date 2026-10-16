@@ -1,12 +1,10 @@
 import {
   collection,
-  deleteField,
   doc,
   getDocs,
-  query,
   setDoc,
   updateDoc,
-  where,
+  deleteField,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { CACHE_KEYS, invalidateQueryCache } from '@/lib/queryCache'
@@ -28,41 +26,22 @@ async function refreshProfile(uid: string): Promise<UserProfile> {
   return profile
 }
 
-async function syncPhotoToStudentRecord(
-  profile: UserProfile,
-  photoUrl: string | null,
-): Promise<void> {
-  if (profile.role !== 'student') return
-
-  const payload = photoUrl ? { photoUrl } : { photoUrl: deleteField() }
-
-  try {
-    if (profile.legacyDocId && profile.legacyCollection === 'ogrenciler') {
-      await updateDoc(doc(db, 'ogrenciler', profile.legacyDocId), payload)
-      invalidateQueryCache(CACHE_KEYS.studentsList)
-      return
-    }
-
-    const snap = await getDocs(
-      query(collection(db, 'ogrenciler'), where('username', '==', profile.username)),
-    )
-    if (!snap.empty) {
-      await updateDoc(doc(db, 'ogrenciler', snap.docs[0].id), payload)
-    }
-    invalidateQueryCache(CACHE_KEYS.studentsList)
-  } catch {
-    // Ogrencli kaydina yazma basarisiz olsa da profil fotografi kaydedilmis kalir
-  }
-}
-
+/**
+ * Canonical student photo lives on users/{uid}.photoUrl only, keyed by Auth uid.
+ * Do not write ogrenciler/{id}.photoUrl — students will not have roster write under S5.
+ */
 export async function fetchStudentPhotoMap(): Promise<Record<string, string>> {
   const snap = await getDocs(collection(db, 'users'))
   const map: Record<string, string> = {}
 
   snap.forEach((docSnap) => {
     const data = docSnap.data() as UserProfile
-    if (data.role === 'student' && data.photoUrl && data.username) {
-      map[data.username.trim().toLowerCase()] = data.photoUrl
+    if (
+      data.role === 'student'
+      && typeof data.photoUrl === 'string'
+      && data.photoUrl
+    ) {
+      map[docSnap.id] = data.photoUrl
     }
   })
 
@@ -73,14 +52,14 @@ export async function updateProfilePhoto(uid: string, photoUrl: string): Promise
   const updatedAt = new Date().toISOString()
   try {
     await setDoc(doc(db, 'users', uid), { photoUrl, updatedAt }, { merge: true })
-    const profile = await refreshProfile(uid)
-    await syncPhotoToStudentRecord(profile, photoUrl)
-    return profile
+    return await refreshProfile(uid)
   } catch (error) {
     if (getErrorCode(error) === 'permission-denied') {
-      throw new Error('Profil fotoğrafı kaydedilemedi. Firestore kurallarını kontrol edin.')
+      throw new Error('Profil fotoğrafı kaydedilemedi. Firestore kurallarını kontrol edin.', {
+        cause: error,
+      })
     }
-    throw error instanceof Error ? error : new Error('Profil fotoğrafı kaydedilemedi.')
+    throw error instanceof Error ? error : new Error('Profil fotoğrafı kaydedilemedi.', { cause: error })
   }
 }
 
@@ -88,13 +67,47 @@ export async function removeProfilePhoto(uid: string): Promise<UserProfile> {
   const updatedAt = new Date().toISOString()
   try {
     await updateDoc(doc(db, 'users', uid), { photoUrl: deleteField(), updatedAt })
-    const profile = await refreshProfile(uid)
-    await syncPhotoToStudentRecord(profile, null)
-    return profile
+    return await refreshProfile(uid)
   } catch (error) {
     if (getErrorCode(error) === 'permission-denied') {
-      throw new Error('Profil fotoğrafı kaldırılamadı. Firestore kurallarını kontrol edin.')
+      throw new Error('Profil fotoğrafı kaldırılamadı. Firestore kurallarını kontrol edin.', {
+        cause: error,
+      })
     }
-    throw error instanceof Error ? error : new Error('Profil fotoğrafı kaldırılamadı.')
+    throw error instanceof Error
+      ? error
+      : new Error('Profil fotoğrafı kaldırılamadı.', { cause: error })
+  }
+}
+
+/** Admin-only UI path: student photos are stored only on users/{ownerUid}. */
+export async function updateStudentProfilePhoto(ownerUid: string, photoUrl: string): Promise<void> {
+  const updatedAt = new Date().toISOString()
+  try {
+    await updateDoc(doc(db, 'users', ownerUid), { photoUrl, updatedAt })
+    invalidateQueryCache(CACHE_KEYS.studentsList)
+  } catch (error) {
+    if (getErrorCode(error) === 'permission-denied') {
+      throw new Error('Öğrenci fotoğrafı kaydedilemedi. Yönetici yetkisini ve Firestore kurallarını kontrol edin.', {
+        cause: error,
+      })
+    }
+    throw error instanceof Error ? error : new Error('Öğrenci fotoğrafı kaydedilemedi.', { cause: error })
+  }
+}
+
+/** Admin-only UI path: remove the canonical student profile photo. */
+export async function removeStudentProfilePhoto(ownerUid: string): Promise<void> {
+  const updatedAt = new Date().toISOString()
+  try {
+    await updateDoc(doc(db, 'users', ownerUid), { photoUrl: deleteField(), updatedAt })
+    invalidateQueryCache(CACHE_KEYS.studentsList)
+  } catch (error) {
+    if (getErrorCode(error) === 'permission-denied') {
+      throw new Error('Öğrenci fotoğrafı kaldırılamadı. Yönetici yetkisini ve Firestore kurallarını kontrol edin.', {
+        cause: error,
+      })
+    }
+    throw error instanceof Error ? error : new Error('Öğrenci fotoğrafı kaldırılamadı.', { cause: error })
   }
 }

@@ -28,6 +28,21 @@ function dersBlock(ders: DersNotu) {
         fillColor: '#f8fafc',
         margin: [0, 0, 0, 4],
       },
+      ...(ders.kod || ders.akts || ders.kaynakDonem
+        ? [
+            {
+              text: [
+                ders.kod ? `Ders kodu: ${ders.kod}` : '',
+                ders.akts ? `${ders.akts} AKTS` : '',
+                ders.kaynakDonem ? `Kaynak dönem: ${ders.kaynakDonem}` : '',
+              ]
+                .filter(Boolean)
+                .join(' · '),
+              style: 'dersDetail',
+              margin: [8, 0, 8, 3],
+            },
+          ]
+        : []),
       {
         columns: [
           { text: notlar.join('  |  ') || '—', style: 'dersDetail', width: '*' },

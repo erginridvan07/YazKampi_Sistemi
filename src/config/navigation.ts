@@ -7,6 +7,7 @@ export const ADMIN_NAV = [
   { id: 'announcements', label: 'Duyuru', path: '/admin/duyuru', icon: 'megaphone' },
   { id: 'grades', label: 'Notlar', path: '/admin/notlar', icon: 'graduation-cap' },
   { id: 'reports', label: 'Raporlar', path: '/admin/raporlar', icon: 'bar-chart' },
+  { id: 'finance', label: 'Kasa', path: '/admin/kasa', icon: 'wallet-cards' },
   { id: 'settings', label: 'Ayarlar', path: '/admin/ayarlar', icon: 'settings' },
   { id: 'site', label: 'Site', path: '/admin/site', icon: 'globe' },
 ] as const

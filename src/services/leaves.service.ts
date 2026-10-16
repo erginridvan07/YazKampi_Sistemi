@@ -4,11 +4,21 @@ import {
   getDocs,
   updateDoc,
   doc,
+  query,
+  where,
 } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase'
 import type { LeaveRequest, LeaveStatus } from '@/types'
 
 const COL = 'evciTalepleri'
+
+function requireCurrentUserUid(): string {
+  const uid = auth.currentUser?.uid
+  if (!uid) {
+    throw new Error('Oturum bulunamadı.')
+  }
+  return uid
+}
 
 export async function fetchLeaveRequests(): Promise<LeaveRequest[]> {
   const snap = await getDocs(collection(db, COL))
@@ -44,20 +54,29 @@ export async function respondLeaveRequest(
   })
 }
 
+/** Creates a leave request bound to the signed-in user. ownerUid is never accepted from callers. */
 export async function createLeaveRequest(data: {
   ogrenciAd: string
   gidisTarihi: string
   donusTarihi: string
   sebep: string
 }): Promise<void> {
+  const ownerUid = requireCurrentUserUid()
   await addDoc(collection(db, COL), {
-    ...data,
+    ogrenciAd: data.ogrenciAd,
+    gidisTarihi: data.gidisTarihi,
+    donusTarihi: data.donusTarihi,
+    sebep: data.sebep,
+    ownerUid,
     durum: 'Beklemede' as LeaveStatus,
     tarih: new Date().toISOString(),
   })
 }
 
-export async function fetchStudentLeaves(ogrenciAd: string): Promise<LeaveRequest[]> {
-  const all = await fetchLeaveRequests()
-  return all.filter((item) => item.ogrenciAd === ogrenciAd)
+export async function fetchStudentLeaves(ownerUid: string): Promise<LeaveRequest[]> {
+  const q = query(collection(db, COL), where('ownerUid', '==', ownerUid))
+  const snap = await getDocs(q)
+  const items: LeaveRequest[] = []
+  snap.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() } as LeaveRequest))
+  return items.sort((a, b) => new Date(b.tarih || 0).getTime() - new Date(a.tarih || 0).getTime())
 }

@@ -18,7 +18,8 @@ export function Switch({ checked, onChange, label, id }: SwitchProps) {
         onClick={() => onChange(!checked)}
         className={cn(
           'relative h-6 w-11 rounded-full transition-colors',
-          checked ? 'bg-primary-600' : 'bg-slate-300',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
+          checked ? 'bg-primary-600' : 'bg-slate-300 dark:bg-slate-600',
         )}
       >
         <span
@@ -28,7 +29,9 @@ export function Switch({ checked, onChange, label, id }: SwitchProps) {
           )}
         />
       </button>
-      {label ? <span className="text-sm font-semibold text-slate-700">{label}</span> : null}
+      {label ? (
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
+      ) : null}
     </label>
   )
 }

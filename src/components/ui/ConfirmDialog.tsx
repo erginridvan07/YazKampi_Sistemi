@@ -25,26 +25,26 @@ const variantConfig: Record<
 > = {
   primary: {
     icon: Info,
-    iconBg: 'bg-primary-100',
-    iconColor: 'text-primary-700',
+    iconBg: 'bg-primary-100 dark:bg-primary-950/60',
+    iconColor: 'text-primary-700 dark:text-primary-300',
     buttonVariant: 'primary',
   },
   success: {
     icon: CheckCircle2,
-    iconBg: 'bg-emerald-100',
-    iconColor: 'text-emerald-700',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-950/60',
+    iconColor: 'text-emerald-700 dark:text-emerald-300',
     buttonVariant: 'primary',
   },
   danger: {
     icon: XCircle,
-    iconBg: 'bg-rose-100',
-    iconColor: 'text-rose-700',
+    iconBg: 'bg-rose-100 dark:bg-rose-950/60',
+    iconColor: 'text-rose-700 dark:text-rose-300',
     buttonVariant: 'danger',
   },
   warning: {
     icon: AlertTriangle,
-    iconBg: 'bg-amber-100',
-    iconColor: 'text-amber-700',
+    iconBg: 'bg-amber-100 dark:bg-amber-950/60',
+    iconColor: 'text-amber-700 dark:text-amber-300',
     buttonVariant: 'accent',
   },
 }
@@ -75,9 +75,9 @@ export function ConfirmDialog({
         >
           <Icon className={cn('h-7 w-7', config.iconColor)} />
         </div>
-        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h3>
         {description ? (
-          <p className="mt-2 text-sm leading-relaxed text-slate-500">{description}</p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
         ) : null}
         {children ? <div className="mt-4 text-left">{children}</div> : null}
         <div className="mt-6 grid grid-cols-2 gap-3">

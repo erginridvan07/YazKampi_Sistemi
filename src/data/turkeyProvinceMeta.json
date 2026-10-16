@@ -1,0 +1,583 @@
+[
+  {
+    "id": "adana",
+    "plate": "01",
+    "name": "Adana",
+    "cx": 270.5,
+    "cy": 270.4
+  },
+  {
+    "id": "adiyaman",
+    "plate": "02",
+    "name": "Adıyaman",
+    "cx": 350.2,
+    "cy": 349.6
+  },
+  {
+    "id": "afyonkarahisar",
+    "plate": "03",
+    "name": "Afyonkarahisar",
+    "cx": 139.1,
+    "cy": 99
+  },
+  {
+    "id": "agri",
+    "plate": "04",
+    "name": "Ağrı",
+    "cx": 451.2,
+    "cy": 450.7
+  },
+  {
+    "id": "amasya",
+    "plate": "05",
+    "name": "Amasya",
+    "cx": 239.1,
+    "cy": 273.2
+  },
+  {
+    "id": "ankara",
+    "plate": "06",
+    "name": "Ankara",
+    "cx": 171.7,
+    "cy": 171
+  },
+  {
+    "id": "antalya",
+    "plate": "07",
+    "name": "Antalya",
+    "cx": 172.8,
+    "cy": 160.3
+  },
+  {
+    "id": "artvin",
+    "plate": "08",
+    "name": "Artvin",
+    "cx": 415.8,
+    "cy": 415.7
+  },
+  {
+    "id": "aydin",
+    "plate": "09",
+    "name": "Aydın",
+    "cx": 59.4,
+    "cy": 131.3
+  },
+  {
+    "id": "balikesir",
+    "plate": "10",
+    "name": "Balıkesir",
+    "cx": 50.9,
+    "cy": 50.7
+  },
+  {
+    "id": "bilecik",
+    "plate": "11",
+    "name": "Bilecik",
+    "cx": 111.9,
+    "cy": 55.8
+  },
+  {
+    "id": "bingol",
+    "plate": "12",
+    "name": "Bingöl",
+    "cx": 383.1,
+    "cy": 384.9
+  },
+  {
+    "id": "bitlis",
+    "plate": "13",
+    "name": "Bitlis",
+    "cx": 446.8,
+    "cy": 447.9
+  },
+  {
+    "id": "bolu",
+    "plate": "14",
+    "name": "Bolu",
+    "cx": 162.2,
+    "cy": 38.8
+  },
+  {
+    "id": "burdur",
+    "plate": "15",
+    "name": "Burdur",
+    "cx": 113.6,
+    "cy": 146.8
+  },
+  {
+    "id": "bursa",
+    "plate": "16",
+    "name": "Bursa",
+    "cx": 102.3,
+    "cy": 52
+  },
+  {
+    "id": "canakkale",
+    "plate": "17",
+    "name": "Çanakkale",
+    "cx": 41.7,
+    "cy": 55.8
+  },
+  {
+    "id": "cankiri",
+    "plate": "18",
+    "name": "Çankırı",
+    "cx": 183.8,
+    "cy": 189
+  },
+  {
+    "id": "corum",
+    "plate": "19",
+    "name": "Çorum",
+    "cx": 224.5,
+    "cy": 42.8
+  },
+  {
+    "id": "denizli",
+    "plate": "20",
+    "name": "Denizli",
+    "cx": 99.8,
+    "cy": 121.5
+  },
+  {
+    "id": "diyarbakir",
+    "plate": "21",
+    "name": "Diyarbakır",
+    "cx": 402.3,
+    "cy": 402.6
+  },
+  {
+    "id": "edirne",
+    "plate": "22",
+    "name": "Edirne",
+    "cx": 32.8,
+    "cy": 32.8
+  },
+  {
+    "id": "elazig",
+    "plate": "23",
+    "name": "Elazığ",
+    "cx": 376,
+    "cy": 375.7
+  },
+  {
+    "id": "erzincan",
+    "plate": "24",
+    "name": "Erzincan",
+    "cx": 371.2,
+    "cy": 370.9
+  },
+  {
+    "id": "erzurum",
+    "plate": "25",
+    "name": "Erzurum",
+    "cx": 418.6,
+    "cy": 43.4
+  },
+  {
+    "id": "eskisehir",
+    "plate": "26",
+    "name": "Eskişehir",
+    "cx": 126.6,
+    "cy": 126.9
+  },
+  {
+    "id": "gaziantep",
+    "plate": "27",
+    "name": "Gaziantep",
+    "cx": 311.5,
+    "cy": 310.7
+  },
+  {
+    "id": "giresun",
+    "plate": "28",
+    "name": "Giresun",
+    "cx": 343.2,
+    "cy": 341.3
+  },
+  {
+    "id": "gumushane",
+    "plate": "29",
+    "name": "Gümüşhane",
+    "cx": 345.2,
+    "cy": 345.8
+  },
+  {
+    "id": "hakkari",
+    "plate": "30",
+    "name": "Hakkâri",
+    "cx": 481.5,
+    "cy": 481.3
+  },
+  {
+    "id": "hatay",
+    "plate": "31",
+    "name": "Hatay",
+    "cx": 265.5,
+    "cy": 269.2
+  },
+  {
+    "id": "isparta",
+    "plate": "32",
+    "name": "Isparta",
+    "cx": 133.1,
+    "cy": 130.9
+  },
+  {
+    "id": "mersin",
+    "plate": "33",
+    "name": "Mersin",
+    "cx": 227.6,
+    "cy": 165.3
+  },
+  {
+    "id": "istanbul-asya",
+    "plate": "34",
+    "name": "İstanbul (Asya)",
+    "cx": 91,
+    "cy": 38.9
+  },
+  {
+    "id": "istanbul-avrupa",
+    "plate": "34",
+    "name": "İstanbul (Avrupa)",
+    "cx": 65.6,
+    "cy": 17.3
+  },
+  {
+    "id": "izmir",
+    "plate": "35",
+    "name": "İzmir",
+    "cx": 129.9,
+    "cy": 86.8
+  },
+  {
+    "id": "kars",
+    "plate": "36",
+    "name": "Kars",
+    "cx": 451.2,
+    "cy": 452.4
+  },
+  {
+    "id": "kastamonu",
+    "plate": "37",
+    "name": "Kastamonu",
+    "cx": 195.1,
+    "cy": 9.2
+  },
+  {
+    "id": "kayseri",
+    "plate": "38",
+    "name": "Kayseri",
+    "cx": 260.8,
+    "cy": 259.8
+  },
+  {
+    "id": "kirklareli",
+    "plate": "39",
+    "name": "Kırklareli",
+    "cx": 44.8,
+    "cy": 45
+  },
+  {
+    "id": "kirsehir",
+    "plate": "40",
+    "name": "Kırşehir",
+    "cx": 214.2,
+    "cy": 214.9
+  },
+  {
+    "id": "kocaeli",
+    "plate": "41",
+    "name": "Kocaeli",
+    "cx": 115.9,
+    "cy": 118.1
+  },
+  {
+    "id": "konya",
+    "plate": "42",
+    "name": "Konya",
+    "cx": 182.7,
+    "cy": 101.3
+  },
+  {
+    "id": "kutahya",
+    "plate": "43",
+    "name": "Kütahya",
+    "cx": 91.3,
+    "cy": 107.6
+  },
+  {
+    "id": "malatya",
+    "plate": "44",
+    "name": "Malatya",
+    "cx": 325,
+    "cy": 118.1
+  },
+  {
+    "id": "manisa",
+    "plate": "45",
+    "name": "Manisa",
+    "cx": 87.6,
+    "cy": 106.3
+  },
+  {
+    "id": "kahramanmaras",
+    "plate": "46",
+    "name": "Kahramanmaraş",
+    "cx": 299.8,
+    "cy": 125.1
+  },
+  {
+    "id": "mardin",
+    "plate": "47",
+    "name": "Mardin",
+    "cx": 390.1,
+    "cy": 151.1
+  },
+  {
+    "id": "mugla",
+    "plate": "48",
+    "name": "Muğla",
+    "cx": 177.6,
+    "cy": 170.7
+  },
+  {
+    "id": "mus",
+    "plate": "49",
+    "name": "Muş",
+    "cx": 430.4,
+    "cy": 404.9
+  },
+  {
+    "id": "nevsehir",
+    "plate": "50",
+    "name": "Nevşehir",
+    "cx": 228.8,
+    "cy": 113.1
+  },
+  {
+    "id": "nigde",
+    "plate": "51",
+    "name": "Niğde",
+    "cx": 222.9,
+    "cy": 133.6
+  },
+  {
+    "id": "ordu",
+    "plate": "52",
+    "name": "Ordu",
+    "cx": 294.2,
+    "cy": 39.6
+  },
+  {
+    "id": "rize",
+    "plate": "53",
+    "name": "Rize",
+    "cx": 397.9,
+    "cy": 29.3
+  },
+  {
+    "id": "sakarya",
+    "plate": "54",
+    "name": "Sakarya",
+    "cx": 119.7,
+    "cy": 120.9
+  },
+  {
+    "id": "samsun",
+    "plate": "55",
+    "name": "Samsun",
+    "cx": 261.7,
+    "cy": 237.2
+  },
+  {
+    "id": "siirt",
+    "plate": "56",
+    "name": "Siirt",
+    "cx": 416.5,
+    "cy": 416
+  },
+  {
+    "id": "sinop",
+    "plate": "57",
+    "name": "Sinop",
+    "cx": 238.6,
+    "cy": 8
+  },
+  {
+    "id": "sivas",
+    "plate": "58",
+    "name": "Sivas",
+    "cx": 316.9,
+    "cy": 278.5
+  },
+  {
+    "id": "tekirdag",
+    "plate": "59",
+    "name": "Tekirdağ",
+    "cx": 63.9,
+    "cy": 63.6
+  },
+  {
+    "id": "tokat",
+    "plate": "60",
+    "name": "Tokat",
+    "cx": 280.7,
+    "cy": 44.5
+  },
+  {
+    "id": "trabzon",
+    "plate": "61",
+    "name": "Trabzon",
+    "cx": 352.3,
+    "cy": 39.7
+  },
+  {
+    "id": "tunceli",
+    "plate": "62",
+    "name": "Tunceli",
+    "cx": 373.6,
+    "cy": 373.1
+  },
+  {
+    "id": "sanliurfa",
+    "plate": "63",
+    "name": "Şanlıurfa",
+    "cx": 347.5,
+    "cy": 144.2
+  },
+  {
+    "id": "usak",
+    "plate": "64",
+    "name": "Uşak",
+    "cx": 95.8,
+    "cy": 109.2
+  },
+  {
+    "id": "van",
+    "plate": "65",
+    "name": "Van",
+    "cx": 469,
+    "cy": 470.8
+  },
+  {
+    "id": "yozgat",
+    "plate": "66",
+    "name": "Yozgat",
+    "cx": 246.2,
+    "cy": 246.5
+  },
+  {
+    "id": "zonguldak",
+    "plate": "67",
+    "name": "Zonguldak",
+    "cx": 163,
+    "cy": 24
+  },
+  {
+    "id": "aksaray",
+    "plate": "68",
+    "name": "Aksaray",
+    "cx": 209.3,
+    "cy": 111
+  },
+  {
+    "id": "bayburt",
+    "plate": "69",
+    "name": "Bayburt",
+    "cx": 368.9,
+    "cy": 370.9
+  },
+  {
+    "id": "karaman",
+    "plate": "70",
+    "name": "Karaman",
+    "cx": 201.4,
+    "cy": 191
+  },
+  {
+    "id": "kirikkale",
+    "plate": "71",
+    "name": "Kırıkkale",
+    "cx": 204.1,
+    "cy": 201.9
+  },
+  {
+    "id": "batman",
+    "plate": "72",
+    "name": "Batman",
+    "cx": 410.9,
+    "cy": 410.1
+  },
+  {
+    "id": "sirnak",
+    "plate": "73",
+    "name": "Şırnak",
+    "cx": 454.5,
+    "cy": 146.6
+  },
+  {
+    "id": "bartin",
+    "plate": "74",
+    "name": "Bartın",
+    "cx": 181.8,
+    "cy": 14.2
+  },
+  {
+    "id": "ardahan",
+    "plate": "75",
+    "name": "Ardahan",
+    "cx": 434.3,
+    "cy": 434.7
+  },
+  {
+    "id": "igdir",
+    "plate": "76",
+    "name": "Iğdır",
+    "cx": 461.8,
+    "cy": 64.7
+  },
+  {
+    "id": "yalova",
+    "plate": "77",
+    "name": "Yalova",
+    "cx": 92.3,
+    "cy": 49.4
+  },
+  {
+    "id": "karabuk",
+    "plate": "78",
+    "name": "Karabük",
+    "cx": 187.7,
+    "cy": 186.9
+  },
+  {
+    "id": "kilis",
+    "plate": "79",
+    "name": "Kilis",
+    "cx": 291.8,
+    "cy": 290.9
+  },
+  {
+    "id": "osmaniye",
+    "plate": "80",
+    "name": "Osmaniye",
+    "cx": 271.4,
+    "cy": 155.5
+  },
+  {
+    "id": "duzce",
+    "plate": "81",
+    "name": "Düzce",
+    "cx": 144.7,
+    "cy": 36.1
+  },
+  {
+    "id": "kuzey-kibris",
+    "plate": "00",
+    "name": "Kuzey Kıbrıs",
+    "cx": 219.1,
+    "cy": 228.9
+  }
+]

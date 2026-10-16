@@ -12,12 +12,13 @@ import {
 } from '@/services/attendance.service'
 import { fetchStudentLeaves } from '@/services/leaves.service'
 import { useAuthStore } from '@/stores/auth.store'
+import { CALENDAR_WEEKDAY_LABELS } from '@/lib/calendarGrid'
 
 const dotColor = {
   geldi: 'bg-emerald-500',
   gelmedi: 'bg-rose-500',
   izinli: 'bg-amber-500',
-  bos: 'bg-slate-200',
+  bos: 'bg-slate-200 dark:bg-slate-600',
 }
 
 export function StudentReportsPage() {
@@ -27,8 +28,8 @@ export function StudentReportsPage() {
 
   const recordsQuery = useAsync(fetchAttendanceRecords, [])
   const leavesQuery = useAsync(
-    () => (profile ? fetchStudentLeaves(profile.adSoyad) : Promise.resolve([])),
-    [profile?.adSoyad],
+    () => (profile ? fetchStudentLeaves(profile.uid) : Promise.resolve([])),
+    [profile?.uid],
   )
 
   const rate = useMemo(() => {
@@ -59,8 +60,8 @@ export function StudentReportsPage() {
         </p>
       </Card>
 
-      <Card>
-        <div className="mb-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2">
+      <Card className="overflow-hidden">
+        <div className="mb-4 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-2 py-2 dark:bg-slate-800/60 sm:px-4">
           <Button
             variant="ghost"
             size="icon"
@@ -71,7 +72,7 @@ export function StudentReportsPage() {
           >
             <ChevronLeft />
           </Button>
-          <span className="font-bold capitalize">{monthLabel}</span>
+          <span className="min-w-0 truncate text-center text-sm font-bold capitalize text-slate-800 dark:text-slate-100 sm:text-base">{monthLabel}</span>
           <Button
             variant="ghost"
             size="icon"
@@ -84,20 +85,27 @@ export function StudentReportsPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
-          {calendarDays.map(({ day, dots }) => (
-            <div key={day} className="rounded-xl border border-slate-100 p-2 text-center">
-              <p className="text-xs font-bold text-slate-500">{day}</p>
-              <div className="mt-1 flex justify-center gap-1">
-                {dots.map((d, i) => (
-                  <span key={i} className={`h-2 w-2 rounded-full ${dotColor[d]}`} title={d} />
-                ))}
+        <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-slate-500 dark:text-slate-400 sm:gap-2 sm:text-xs">
+          {CALENDAR_WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          {calendarDays.map(({ key, day, dots }) =>
+            day === null ? (
+              <div key={key} aria-hidden="true" className="min-h-[46px] sm:min-h-[54px]" />
+            ) : (
+              <div key={key} className="min-h-[46px] min-w-0 rounded-lg border border-slate-100 p-1 text-center dark:border-slate-700 sm:min-h-[54px] sm:rounded-xl sm:p-2">
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 sm:text-xs">{day}</p>
+                <div className="mt-1 flex justify-center gap-0.5 sm:gap-1">
+                  {dots.map((d, i) => (
+                    <span key={i} className={`h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2 ${dotColor[d]}`} title={d} />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ),
+          )}
         </div>
 
-        <div className="mt-4 flex justify-center gap-4 text-xs text-slate-500">
+        <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs text-slate-500 dark:text-slate-400 sm:gap-4">
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" /> Geldi</span>
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-500" /> Gelmedi</span>
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-amber-500" /> İzinli</span>

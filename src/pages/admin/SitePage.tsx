@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/admin/PageHeader'
 import { KURUCU_IMAGE_OPTS } from '@/lib/avatar'
 import { Button } from '@/components/ui/Button'
 import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
 import { Textarea } from '@/components/ui/Textarea'
@@ -72,7 +73,7 @@ function BulletEditor({
 }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-bold uppercase text-slate-500">{label}</p>
+      <p className="mb-2 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">{label}</p>
       <div className="space-y-2">
         {items.map((item, i) => (
           <div key={i} className="flex gap-2">
@@ -118,8 +119,6 @@ export function AdminSitePage() {
       await logAudit({
         islem: 'Site İçeriği Güncelleme',
         detay: 'Ana sayfa (landing) düzenlendi',
-        yapan: profile?.adSoyad || 'Yönetici',
-        rol: 'admin',
       })
       const refreshed = await fetchLandingContent()
       setContent(refreshed)
@@ -172,9 +171,12 @@ export function AdminSitePage() {
           </CardDescription>
         </Card>
 
-        <Card accent="primary">
-          <CardTitle>Üst Banner (Hero)</CardTitle>
-          <div className="mt-4 space-y-4">
+        <CollapsibleSection
+          storageKey="gv-site-hero-open"
+          accent="primary"
+          title="Üst Banner (Hero)"
+        >
+          <div className="space-y-4">
             <Input id="hero-eyebrow" label="Üst etiket" value={content.hero.eyebrow}
               onChange={(e) => setContent({ ...content, hero: { ...content.hero, eyebrow: e.target.value } })} />
             <Textarea id="hero-title" label="Ana başlık" value={content.hero.title}
@@ -188,12 +190,14 @@ export function AdminSitePage() {
                 hero: { ...content.hero, tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) },
               })} />
           </div>
-        </Card>
+        </CollapsibleSection>
 
-        <Card>
-          <CardTitle>Hakkımızda</CardTitle>
-          <CardDescription>Kurucumuz bölümünden önce görünür</CardDescription>
-          <div className="mt-4 space-y-4">
+        <CollapsibleSection
+          storageKey="gv-site-hakkimizda-open"
+          title="Hakkımızda"
+          description="Kurucumuz bölümünden önce görünür"
+        >
+          <div className="space-y-4">
             <Input id="hakk-label" label="Bölüm etiketi" value={content.hakkimizda.label}
               onChange={(e) => setContent({ ...content, hakkimizda: { ...content.hakkimizda, label: e.target.value } })} />
             <Input id="hakk-title" label="Başlık" value={content.hakkimizda.title}
@@ -233,11 +237,10 @@ export function AdminSitePage() {
               <Plus className="h-4 w-4" /> Paragraf Ekle
             </Button>
           </div>
-        </Card>
+        </CollapsibleSection>
 
-        <Card>
-          <CardTitle>Kurucumuz</CardTitle>
-          <div className="mt-4 space-y-4">
+        <CollapsibleSection storageKey="gv-site-kurucu-open" title="Kurucumuz">
+          <div className="space-y-4">
             <Input id="kurucu-label" label="Bölüm etiketi" value={content.kurucu.label}
               onChange={(e) => setContent({ ...content, kurucu: { ...content.kurucu, label: e.target.value } })} />
             <Input id="kurucu-title" label="Başlık" value={content.kurucu.title}
@@ -265,11 +268,10 @@ export function AdminSitePage() {
               onChange={(bullets) => setContent({ ...content, kurucu: { ...content.kurucu, bullets } })}
             />
           </div>
-        </Card>
+        </CollapsibleSection>
 
-        <Card>
-          <CardTitle>Misyon & Vizyon</CardTitle>
-          <div className="mt-4 grid gap-6 lg:grid-cols-2">
+        <CollapsibleSection storageKey="gv-site-misyon-vizyon-open" title="Misyon & Vizyon">
+          <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-4">
               <Input id="misyon-title" label="Misyon başlığı" value={content.misyon.title}
                 onChange={(e) => setContent({ ...content, misyon: { ...content.misyon, title: e.target.value } })} />
@@ -294,12 +296,15 @@ export function AdminSitePage() {
               />
             </div>
           </div>
-        </Card>
+        </CollapsibleSection>
 
-        <Card accent="warning">
-          <CardTitle>Galeri (Yurt Hayatı)</CardTitle>
-          <CardDescription>Üstte fotoğraflar döner, altta kartlar halinde görünür</CardDescription>
-          <div className="mt-4 space-y-4">
+        <CollapsibleSection
+          storageKey="gv-site-galeri-open"
+          accent="warning"
+          title="Galeri (Yurt Hayatı)"
+          description="Üstte fotoğraflar döner, altta kartlar halinde görünür"
+        >
+          <div className="space-y-4">
             {content.galeri.map((item, index) => (
               <div key={item.id} className="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
                 <div className="flex flex-wrap gap-4">
@@ -342,11 +347,10 @@ export function AdminSitePage() {
               <Plus className="h-4 w-4" /> Galeri Alanı Ekle
             </Button>
           </div>
-        </Card>
+        </CollapsibleSection>
 
-        <Card>
-          <CardTitle>İletişim</CardTitle>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <CollapsibleSection storageKey="gv-site-iletisim-open" title="İletişim">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Textarea id="iletisim-adres" label="Adres" value={content.iletisim.address}
               onChange={(e) => setContent({ ...content, iletisim: { ...content.iletisim, address: e.target.value } })} />
             <Input id="iletisim-tel" label="Telefon" value={content.iletisim.phone}
@@ -354,7 +358,7 @@ export function AdminSitePage() {
             <Input id="iletisim-email" label="E-posta" value={content.iletisim.email}
               onChange={(e) => setContent({ ...content, iletisim: { ...content.iletisim, email: e.target.value } })} />
           </div>
-        </Card>
+        </CollapsibleSection>
 
         <Button fullWidth size="lg" onClick={handleSave} disabled={saving}>
           <Save className="h-5 w-5" /> Tüm Değişiklikleri Kaydet

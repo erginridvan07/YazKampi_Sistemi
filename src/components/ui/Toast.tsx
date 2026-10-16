@@ -10,10 +10,13 @@ const iconMap = {
 }
 
 const toneMap = {
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  error: 'border-rose-200 bg-rose-50 text-rose-800',
-  info: 'border-primary-200 bg-primary-50 text-primary-800',
-  warning: 'border-amber-200 bg-amber-50 text-amber-800',
+  success:
+    'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-200',
+  error:
+    'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/80 dark:text-rose-200',
+  info: 'border-primary-200 bg-primary-50 text-primary-800 dark:border-primary-800 dark:bg-primary-950/80 dark:text-primary-200',
+  warning:
+    'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/80 dark:text-amber-200',
 }
 
 export function ToastContainer() {
@@ -28,7 +31,7 @@ export function ToastContainer() {
           <div
             key={toast.id}
             className={cn(
-              'pointer-events-auto w-full max-w-sm rounded-2xl border p-4 shadow-lg shadow-slate-300/30',
+              'pointer-events-auto w-full max-w-sm rounded-2xl border p-4 shadow-lg shadow-slate-300/30 dark:shadow-black/40',
               toneMap[toast.type],
             )}
           >

@@ -21,7 +21,7 @@ export function NotificationProvider() {
 
     if (profile.role === 'student') {
       cleanups.push(
-        subscribeStudentLeaveUpdates(profile.adSoyad, (durum, gidisTarihi) => {
+        subscribeStudentLeaveUpdates(profile.uid, (durum, gidisTarihi) => {
           const title = durum === 'Onaylandı' ? 'İzin talebiniz onaylandı' : 'İzin talebiniz reddedildi'
           const body = `${gidisTarihi} tarihli evci izin talebiniz ${durum.toLowerCase()}.`
           showLocalNotification(title, body, `leave-${gidisTarihi}`)

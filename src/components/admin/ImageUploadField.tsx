@@ -60,7 +60,9 @@ export function ImageUploadField({
 
   return (
     <div className="space-y-3">
-      {label ? <p className="text-xs font-bold uppercase text-slate-500">{label}</p> : null}
+      {label ? (
+        <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">{label}</p>
+      ) : null}
 
       {value ? (
         <img
@@ -97,7 +99,9 @@ export function ImageUploadField({
         ) : null}
       </div>
 
-      {helperText ? <p className="text-xs text-slate-500">{helperText}</p> : null}
+      {helperText ? (
+        <p className="text-xs text-slate-500 dark:text-slate-400">{helperText}</p>
+      ) : null}
 
       {showUrlInput ? (
         <Input

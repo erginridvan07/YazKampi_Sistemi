@@ -12,12 +12,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-600/20',
+    'bg-primary-600 text-white hover:bg-primary-700 shadow-sm shadow-primary-600/20 dark:hover:bg-primary-800 dark:shadow-primary-950/40',
   secondary:
-    'border border-primary-200 bg-white text-primary-700 hover:bg-primary-50',
-  ghost: 'bg-transparent text-slate-600 hover:bg-slate-100',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700',
-  accent: 'bg-amber-500 text-white hover:bg-amber-600',
+    'border border-primary-200 bg-white text-primary-700 hover:bg-primary-50 dark:border-primary-800 dark:bg-slate-900 dark:text-primary-300 dark:hover:bg-primary-950/50',
+  ghost:
+    'bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
+  danger: 'bg-rose-600 text-white hover:bg-rose-700 dark:hover:bg-rose-800',
+  accent: 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-800',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -47,7 +48,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled={disabled}
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900',
         'disabled:cursor-not-allowed disabled:opacity-60',
         variantClasses[variant],
         sizeClasses[size],

@@ -9,7 +9,6 @@ import {
   XCircle,
 } from 'lucide-react'
 import { MetricCard } from '@/components/admin/MetricCard'
-import { AttendanceTrendChart } from '@/components/admin/AttendanceTrendChart'
 import { WeeklyAttendanceReportCard } from '@/components/admin/WeeklyAttendanceReportCard'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { Badge } from '@/components/ui/Badge'
@@ -24,9 +23,11 @@ import {
   filterAnnouncementsForDisplay,
 } from '@/services/announcements.service'
 import { fetchPendingLeaves, respondLeaveRequest } from '@/services/leaves.service'
-import { fetchStudentsList } from '@/services/students.service'
 import {
-  buildMonthlyAbsenceTrend,
+  announcementContentClassName,
+  normalizeAnnouncementContent,
+} from '@/lib/announcementContent'
+import {
   buildWeeklyAttendanceReport,
   fetchAttendanceRecords,
 } from '@/services/attendance.service'
@@ -54,10 +55,8 @@ export function AdminDashboardPage() {
   }, [])
 
   const trendQuery = useAsync(async () => {
-    const [students, records] = await Promise.all([fetchStudentsList(), fetchAttendanceRecords()])
-    const studentNames = students.map((s) => s.adSoyad)
+    const records = await fetchAttendanceRecords()
     return {
-      monthly: buildMonthlyAbsenceTrend(records, studentNames),
       weekly: buildWeeklyAttendanceReport(records),
     }
   }, [])
@@ -75,12 +74,12 @@ export function AdminDashboardPage() {
       cancelLabel: 'Vazgeç',
       variant: isApprove ? 'success' : 'danger',
       children: (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-          <p className="font-bold text-slate-900">{leave.ogrenciAd}</p>
-          <p className="mt-1 text-slate-600">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm dark:border-slate-700 dark:bg-slate-800/60">
+          <p className="font-bold text-slate-900 dark:text-slate-100">{leave.ogrenciAd}</p>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">
             {leave.gidisTarihi} → {leave.donusTarihi}
           </p>
-          <p className="mt-3 rounded-xl bg-white px-3 py-2 italic text-slate-500">
+          <p className="mt-3 rounded-xl bg-white px-3 py-2 italic text-slate-500 dark:bg-slate-900 dark:text-slate-400">
             "{leave.sebep}"
           </p>
         </div>
@@ -95,8 +94,6 @@ export function AdminDashboardPage() {
       await logAudit({
         islem: isApprove ? 'İzin Onayı' : 'İzin Reddi',
         detay: `${leave.ogrenciAd} · ${leave.gidisTarihi} → ${leave.donusTarihi}`,
-        yapan: profile?.adSoyad || 'Yönetici',
-        rol: 'admin',
       })
       showToast(
         'success',
@@ -143,7 +140,6 @@ export function AdminDashboardPage() {
 
       {trendQuery.data ? (
         <div className="mb-8 space-y-8">
-          <AttendanceTrendChart data={trendQuery.data.monthly} />
           <WeeklyAttendanceReportCard data={trendQuery.data.weekly} />
         </div>
       ) : null}
@@ -155,14 +151,14 @@ export function AdminDashboardPage() {
             {leavesQuery.data.map((leave) => (
               <div
                 key={leave.id}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40"
               >
                 <div>
-                  <p className="font-bold text-amber-900">{leave.ogrenciAd}</p>
-                  <p className="text-sm text-amber-700">
+                  <p className="font-bold text-amber-900 dark:text-amber-200">{leave.ogrenciAd}</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
                     {leave.gidisTarihi} → {leave.donusTarihi}
                   </p>
-                  <p className="mt-2 text-sm italic text-slate-600">"{leave.sebep}"</p>
+                  <p className="mt-2 text-sm italic text-slate-600 dark:text-slate-400">"{leave.sebep}"</p>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -203,15 +199,17 @@ export function AdminDashboardPage() {
             {announcementsQuery.data.slice(0, 5).map((item) => (
               <div
                 key={item.id}
-                className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50"
               >
                 <div className="flex items-center gap-2">
                   <Badge tone={item.tone === 'bugun' ? 'danger' : item.tone === 'yaklasiyor' ? 'warning' : 'primary'}>
                     {item.type === 'duty' ? 'Görev' : 'Duyuru'}
                   </Badge>
-                  <p className="font-bold text-slate-800">{item.title}</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-100">{item.title}</p>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{item.content}</p>
+                <p className={`mt-2 text-sm text-slate-600 dark:text-slate-400 ${announcementContentClassName}`}>
+                  {normalizeAnnouncementContent(item.content)}
+                </p>
               </div>
             ))}
           </div>
@@ -236,7 +234,7 @@ export function AdminDashboardPage() {
                   ) : null}
                 </div>
                 <p className="text-xs text-slate-400">
-                  {log.yapan} · {new Date(log.timestamp).toLocaleString('tr-TR')}
+                  {log.yapan} · {new Date(String(log.timestamp || '')).toLocaleString('tr-TR')}
                 </p>
               </div>
             ))}
@@ -245,17 +243,26 @@ export function AdminDashboardPage() {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Link to="/admin/ogrenciler" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-primary-300 hover:shadow-md">
-          <p className="font-bold text-slate-900">Öğrenci Yönetimi</p>
-          <p className="mt-1 text-sm text-slate-500">Kayıt, düzenleme ve listeleme</p>
+        <Link
+          to="/admin/ogrenciler"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-700"
+        >
+          <p className="font-bold text-slate-900 dark:text-slate-100">Öğrenci Yönetimi</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kayıt, düzenleme ve listeleme</p>
         </Link>
-        <Link to="/admin/yoklama" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-primary-300 hover:shadow-md">
-          <p className="font-bold text-slate-900">Namaz Yoklaması</p>
-          <p className="mt-1 text-sm text-slate-500">Günlük yoklama kaydı</p>
+        <Link
+          to="/admin/yoklama"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-700"
+        >
+          <p className="font-bold text-slate-900 dark:text-slate-100">Namaz Yoklaması</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Günlük yoklama kaydı</p>
         </Link>
-        <Link to="/admin/raporlar" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-primary-300 hover:shadow-md">
-          <p className="font-bold text-slate-900">Devamsızlık Raporları</p>
-          <p className="mt-1 text-sm text-slate-500">Takvim ve istatistikler</p>
+        <Link
+          to="/admin/raporlar"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:hover:border-primary-700"
+        >
+          <p className="font-bold text-slate-900 dark:text-slate-100">Devamsızlık Raporları</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Takvim ve istatistikler</p>
         </Link>
       </div>
     </div>

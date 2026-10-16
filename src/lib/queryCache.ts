@@ -4,6 +4,7 @@ const store = new Map<string, CacheEntry>()
 
 export const CACHE_KEYS = {
   studentsList: 'students:list',
+  attendanceRoster: 'attendance:roster',
   attendanceAll: 'attendance:all',
   attendanceRecent: (limit: number) => `attendance:recent:${limit}`,
   landingContent: 'landing:content',

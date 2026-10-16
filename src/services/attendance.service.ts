@@ -11,6 +11,7 @@ import {
 import { db } from '@/lib/firebase'
 import { CACHE_KEYS, cachedQuery, invalidateQueryCache, invalidateQueryCachePrefix } from '@/lib/queryCache'
 import { getMonthYear, parseFlexibleDate, toISO, toLegacyDate, formatDateTR } from '@/lib/dates'
+import { buildCalendarGrid, type CalendarDayCell, type CalendarDot } from '@/lib/calendarGrid'
 import { DEVAMSIZLIK_RISK_ESIGI } from '@/config/constants'
 import type {
   AttendanceRecord,
@@ -202,9 +203,9 @@ export function buildCalendarMonth(
   year: number,
   month: number,
   approvedLeaves: { gidisTarihi: string; donusTarihi: string }[],
-): { day: number; dots: ('geldi' | 'gelmedi' | 'izinli' | 'bos')[] }[] {
+): CalendarDayCell[] {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const result = []
+  const result: { day: number; dots: CalendarDot[] }[] = []
 
   for (let day = 1; day <= daysInMonth; day++) {
     const legacy = `${String(day).padStart(2, '0')}.${String(month + 1).padStart(2, '0')}.${year}`
@@ -215,7 +216,7 @@ export function buildCalendarMonth(
       return start && end && date >= start && date <= end
     })
 
-    const dots: ('geldi' | 'gelmedi' | 'izinli' | 'bos')[] = []
+    const dots: CalendarDot[] = []
     for (const vakit of ['Sabah', 'Yatsı']) {
       const record = getAttendanceForDate(records, legacy, vakit)
       if (onLeave) dots.push('izinli')
@@ -226,7 +227,7 @@ export function buildCalendarMonth(
     result.push({ day, dots })
   }
 
-  return result
+  return buildCalendarGrid(year, month, result)
 }
 
 export function calcAttendanceRate(records: AttendanceRecord[], studentName: string) {

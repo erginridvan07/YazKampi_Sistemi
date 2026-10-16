@@ -42,12 +42,13 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm dark:bg-black/70"
       onClick={onClose}
     >
       <div
         className={cn(
           'relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl',
+          'dark:border dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40',
           className,
         )}
         onClick={(event) => event.stopPropagation()}
@@ -55,8 +56,10 @@ export function Modal({
         <div className="mb-5 flex items-start justify-between gap-4">
           {!hideHeader ? (
             <div>
-              <h3 className="text-xl font-bold text-slate-900">{title}</h3>
-              {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+              {description ? (
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
+              ) : null}
             </div>
           ) : (
             <div />

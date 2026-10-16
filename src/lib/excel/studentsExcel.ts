@@ -38,7 +38,6 @@ function rowToStudent(row: Record<string, unknown>, rowNumber: number): ParsedSt
   const data: StudentFormData = {
     adSoyad: String(row['Ad Soyad'] ?? '').trim(),
     username: String(row['Kullanıcı Adı'] ?? '').trim(),
-    password: String(row['Şifre'] ?? '').trim(),
     bolum: String(row['Bölüm'] ?? 'İlahiyat').trim(),
     sinif: parseSinif(row['Sınıf']),
     odaNo: String(row['Oda'] ?? '1').trim(),
@@ -48,9 +47,6 @@ function rowToStudent(row: Record<string, unknown>, rowNumber: number): ParsedSt
 
   if (!data.adSoyad) return { rowNumber, data, error: 'Ad Soyad boş' }
   if (!data.username) return { rowNumber, data, error: 'Kullanıcı adı boş' }
-  if (!data.password || data.password.length < 6) {
-    return { rowNumber, data, error: 'Şifre en az 6 karakter olmalı' }
-  }
 
   return { rowNumber, data }
 }
@@ -60,7 +56,7 @@ export async function exportStudentsExcel(students: Student[]): Promise<void> {
   const rows = students.map((s) => ({
     'Ad Soyad': s.adSoyad,
     'Kullanıcı Adı': s.username,
-    'Şifre': s.password || '',
+    'Şifre': '',
     'Bölüm': s.bolum,
     'Sınıf': s.sinif === '0' || s.sinif === 0 ? 'Hazırlık' : s.sinif,
     'Oda': s.odaNo,
@@ -80,7 +76,7 @@ export async function exportStudentsTemplate(): Promise<void> {
     {
       'Ad Soyad': 'Ahmet Yılmaz',
       'Kullanıcı Adı': 'ahmetyilmaz',
-      'Şifre': '123456',
+      'Şifre': '',
       'Bölüm': 'İlahiyat',
       'Sınıf': '1',
       'Oda': '3',

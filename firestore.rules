@@ -7,67 +7,768 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function callerProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
+      return signedIn() && callerProfile().role == 'admin';
+    }
+
+    function isGraduate() {
+      return signedIn() && callerProfile().role == 'graduate';
+    }
+
+    function canManageAttendance() {
+      return signedIn() && callerProfile().canManageAttendance == true;
+    }
+
+    function isOwnStudent(docData) {
       return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && 'ownerUid' in docData
+        && docData.ownerUid == request.auth.uid;
     }
 
-    // ---- GECIS DONEMI (ilk giris icin zorunlu) ----
-    // Eski kullanici kayitlari giris oncesi okunabilmeli.
-    match /ogrenciler/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    function noPasswordField() {
+      return !('password' in request.resource.data);
     }
 
-    match /yoneticiler/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+    function ownerUidUnchanged() {
+      return !('ownerUid' in resource.data)
+        ? !('ownerUid' in request.resource.data)
+        : request.resource.data.ownerUid == resource.data.ownerUid;
     }
 
-    // V2 kullanici profilleri — yonetici ogrenci fotograflarini gorebilir
-    match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
+    function validClassPromotionUpdate() {
+      let d = request.resource.data;
+      let changed = d.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['sinif', 'updatedAt'])
+        && changed.hasAll(['sinif', 'updatedAt'])
+        && d.updatedAt is string
+        && d.updatedAt.size() > 0
+        && (
+          (resource.data.sinif in [0, '0'] && d.sinif == '1')
+          || (resource.data.sinif in [1, '1'] && d.sinif == '2')
+          || (resource.data.sinif in [2, '2'] && d.sinif == '3')
+          || (resource.data.sinif in [3, '3'] && d.sinif == '4')
+        );
+    }
+
+    function validStudentAdminUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return noPasswordField()
+        && ownerUidUnchanged()
+        && (
+          !changed.hasAny(['sinif'])
+          || validClassPromotionUpdate()
+        );
+    }
+
+    function validGradePeriodKeys(mapValue) {
+      return mapValue.keys().hasOnly([
+          'Hazirlik_Guz',
+          'Hazirlik_Bahar',
+          '1_Guz',
+          '1_Bahar',
+          '2_Guz',
+          '2_Bahar',
+          '3_Guz',
+          '3_Bahar',
+          '4_Guz',
+          '4_Bahar'
+        ]);
+    }
+
+    function validStudentSelfGradeUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let notes = request.resource.data.akademikNotlar;
+      let donem = request.resource.data.donemOrtalamalari;
+      return callerProfile().role == 'student'
+        && isOwnStudent(resource.data)
+        && ownerUidUnchanged()
+        && changed.hasOnly(['akademikNotlar', 'donemOrtalamalari', 'genelOrt', 'lastUpdate'])
+        && notes is map
+        && donem is map
+        && validGradePeriodKeys(notes)
+        && validGradePeriodKeys(donem)
+        && request.resource.data.genelOrt is string
+        && request.resource.data.lastUpdate is string
+        && request.resource.data.lastUpdate.size() > 0;
+    }
+
+    function validProfilePhotoValue() {
+      return !('photoUrl' in request.resource.data)
+        || (
+          request.resource.data.photoUrl is string
+          && request.resource.data.photoUrl.size() > 0
+          && request.resource.data.photoUrl.size() <= 180000
+          && request.resource.data.photoUrl.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')
+        );
+    }
+
+    function selfUserAllowlistUpdate(userId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return request.auth.uid == userId
+        && (
+          (resource.data.role == 'student'
+            && changed.hasOnly(['fcmTokens', 'notificationsEnabled', 'updatedAt']))
+          || (resource.data.role != 'student'
+            && changed.hasOnly(['photoUrl', 'fcmTokens', 'notificationsEnabled', 'updatedAt']))
+        )
+        && (!changed.hasAny(['photoUrl']) || validProfilePhotoValue());
+    }
+
+    function adminUserAllowlistUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isAdmin()
+        && (
+          changed.hasOnly(['canManageAttendance', 'updatedAt'])
+          || (
+            resource.data.role == 'student'
+            && changed.hasOnly(['photoUrl', 'updatedAt'])
+            && changed.hasAll(['photoUrl', 'updatedAt'])
+            && validProfilePhotoValue()
+          )
+        );
+    }
+
+    function validRosterDoc(rosterStudentId) {
+      return request.resource.data.keys().hasOnly(['studentId', 'adSoyad', 'odaNo'])
+        && request.resource.data.studentId == rosterStudentId
+        && request.resource.data.adSoyad is string
+        && request.resource.data.adSoyad.size() > 0
+        && (
+          request.resource.data.odaNo is int
+          || request.resource.data.odaNo is float
+          || (request.resource.data.odaNo is string && request.resource.data.odaNo.size() > 0)
+        );
+    }
+
+    function validAttendanceCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'vakit',
+          'tarih',
+          'timestamp',
+          'sistemeGirisZamani',
+          'gelenOgrenciler',
+          'gelmeyenOgrenciler',
+          'izinliOgrenciler',
+          'kaydeden'
+        ])
+        && d.keys().hasOnly([
+          'vakit',
+          'tarih',
+          'timestamp',
+          'sistemeGirisZamani',
+          'gelenOgrenciler',
+          'gelmeyenOgrenciler',
+          'izinliOgrenciler',
+          'kaydeden'
+        ])
+        && d.vakit in ['Sabah', 'Öğle', 'İkindi', 'Akşam', 'Yatsı']
+        && d.tarih is string
+        && d.tarih.size() > 0
+        && d.timestamp is timestamp
+        && d.sistemeGirisZamani is timestamp
+        && d.kaydeden is string
+        && d.kaydeden.size() > 0
+        && d.gelenOgrenciler is list
+        && d.gelmeyenOgrenciler is list
+        && d.izinliOgrenciler is list;
+    }
+
+    function validAttendanceUpdate() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'gelenOgrenciler',
+            'gelmeyenOgrenciler',
+            'izinliOgrenciler',
+            'sonDuzenleyen',
+            'duzenlemeTarihi'
+          ])
+        && d.vakit == resource.data.vakit
+        && d.tarih == resource.data.tarih
+        && d.timestamp == resource.data.timestamp
+        && d.gelenOgrenciler is list
+        && d.gelmeyenOgrenciler is list
+        && d.izinliOgrenciler is list
+        && d.sonDuzenleyen is string
+        && d.duzenlemeTarihi is timestamp;
+    }
+
+    function canManageAnnouncements() {
+      return isAdmin() || canManageAttendance();
+    }
+
+    function validAnnouncementCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'baslik',
+          'icerik',
+          'etkinlikTarihi',
+          'hatirlatmaGun',
+          'tarih'
+        ])
+        && d.keys().hasOnly([
+          'baslik',
+          'icerik',
+          'etkinlikTarihi',
+          'hatirlatmaGun',
+          'tarih'
+        ])
+        && d.baslik is string
+        && d.baslik.size() > 0
+        && d.icerik is string
+        && d.icerik.size() > 0
+        && (
+          d.etkinlikTarihi == null
+          || (d.etkinlikTarihi is string && d.etkinlikTarihi.size() > 0)
+        )
+        && d.hatirlatmaGun is int
+        && d.tarih is timestamp;
+    }
+
+    function validAnnouncementUpdate() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys()
+          .hasOnly(['baslik', 'icerik', 'etkinlikTarihi', 'hatirlatmaGun'])
+        && d.tarih == resource.data.tarih
+        && d.baslik is string
+        && d.baslik.size() > 0
+        && d.icerik is string
+        && d.icerik.size() > 0
+        && (
+          d.etkinlikTarihi == null
+          || (d.etkinlikTarihi is string && d.etkinlikTarihi.size() > 0)
+        )
+        && d.hatirlatmaGun is int;
+    }
+
+    function isValidDutyDocId(docId) {
+      return docId.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function validDailyDutyWrite() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['imam', 'muezzin', 'guncellemeZamani'])
+        && d.imam is string
+        && d.imam.size() > 0
+        && d.muezzin is string
+        && d.muezzin.size() > 0
+        && d.guncellemeZamani is timestamp;
+    }
+
+    function validFinanceDoc() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'tur',
+          'tarih',
+          'tutarKurus',
+          'paraBirimi',
+          'hesap',
+          'fon',
+          'kategori',
+          'taraf',
+          'aciklama',
+          'durum',
+          'iptalNotu',
+          'createdByUid',
+          'createdByName',
+          'createdAt',
+          'updatedAt'
+        ])
+        && d.keys().hasOnly([
+          'tur',
+          'tarih',
+          'tutarKurus',
+          'paraBirimi',
+          'hesap',
+          'fon',
+          'hedefFon',
+          'hedefHesap',
+          'ogrenciId',
+          'kategori',
+          'taraf',
+          'aciklama',
+          'durum',
+          'iptalNotu',
+          'createdByUid',
+          'createdByName',
+          'createdAt',
+          'updatedAt'
+        ])
+        && d.tur in ['gelir', 'gider', 'devir', 'fon_donusumu']
+        && d.tarih is string
+        && d.tarih.matches('^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$')
+        && d.tutarKurus is int
+        && d.tutarKurus > 0
+        && d.tutarKurus <= 100000000000
+        && d.paraBirimi in ['TRY', 'EUR', 'USD']
+        && d.hesap in ['nakit', 'banka']
+        && d.fon in ['Genel', 'Zekât', 'Bağış']
+        && (
+          (
+            d.tur in ['gelir', 'gider', 'devir']
+            && !('hedefFon' in d)
+            && !('hedefHesap' in d)
+            && !('ogrenciId' in d)
+          )
+          || (
+            d.tur == 'fon_donusumu'
+            && 'hedefFon' in d
+            && d.hedefFon == 'Bağış'
+            && (!('hedefHesap' in d) || d.hedefHesap in ['nakit', 'banka'])
+            && (
+              (
+                d.fon == 'Zekât'
+                && 'ogrenciId' in d
+                && d.ogrenciId is string
+                && d.ogrenciId.size() > 0
+                && exists(/databases/$(database)/documents/ogrenciler/$(d.ogrenciId))
+                && get(/databases/$(database)/documents/ogrenciler/$(d.ogrenciId)).data.adSoyad == d.taraf
+              )
+              || (
+                d.fon == 'Bağış'
+                && d.kategori == 'Bağış fonu konum değişimi'
+                && (
+                  (
+                    'ogrenciId' in d
+                    && d.ogrenciId is string
+                    && d.ogrenciId.size() > 0
+                    && exists(/databases/$(database)/documents/ogrenciler/$(d.ogrenciId))
+                    && get(/databases/$(database)/documents/ogrenciler/$(d.ogrenciId)).data.adSoyad == d.taraf
+                  )
+                  || (
+                    !('ogrenciId' in d)
+                    && d.taraf == 'Bağış fonu'
+                  )
+                )
+              )
+            )
+          )
+        )
+        && d.kategori is string
+        && d.kategori.size() > 0
+        && d.kategori.size() <= 80
+        && d.taraf is string
+        && d.taraf.size() > 0
+        && d.taraf.size() <= 120
+        && d.aciklama is string
+        && d.aciklama.size() <= 500
+        && d.durum in ['aktif', 'iptal']
+        && d.iptalNotu is string
+        && (
+          (d.durum == 'aktif' && d.iptalNotu == '')
+          || (d.durum == 'iptal' && d.iptalNotu.size() >= 3 && d.iptalNotu.size() <= 500)
+        )
+        && d.createdByUid is string
+        && d.createdByUid.size() > 0
+        && d.createdByName is string
+        && d.createdByName.size() > 0
+        && d.createdByName.size() <= 120
+        && d.createdAt is timestamp
+        && d.updatedAt is timestamp;
+    }
+
+    function validFinanceCreate() {
+      let d = request.resource.data;
+      return validFinanceDoc()
+        && d.durum == 'aktif'
+        && d.iptalNotu == ''
+        && d.createdByUid == request.auth.uid
+        && d.createdByName == callerProfile().adSoyad
+        && d.createdAt == request.time
+        && d.updatedAt == request.time
+        // New donation account movements must be linked to a student. The
+        // legacy no-student form stays readable/cancellable via validFinanceUpdate.
+        && !(d.tur == 'fon_donusumu' && d.fon == 'Bağış' && !('ogrenciId' in d));
+    }
+
+    function validFinanceUpdate() {
+      let d = request.resource.data;
+      let changed = d.diff(resource.data).affectedKeys();
+      return validFinanceDoc()
+        && d.createdByUid == resource.data.createdByUid
+        && d.createdByName == resource.data.createdByName
+        && d.createdAt == resource.data.createdAt
+        && d.updatedAt == request.time
+        && (
+          (
+            resource.data.durum == 'aktif'
+            && d.durum == 'aktif'
+            && changed.hasOnly([
+              'tur',
+              'tarih',
+              'tutarKurus',
+              'paraBirimi',
+              'hesap',
+              'fon',
+              'hedefFon',
+              'hedefHesap',
+              'ogrenciId',
+              'kategori',
+              'taraf',
+              'aciklama',
+              'updatedAt'
+            ])
+          )
+          || (
+            resource.data.durum == 'aktif'
+            && d.durum == 'iptal'
+            && changed.hasOnly(['durum', 'iptalNotu', 'updatedAt'])
+          )
+        );
+    }
+
+    function isLeaveOwner(docData) {
+      return signedIn()
+        && 'ownerUid' in docData
+        && docData.ownerUid == request.auth.uid;
+    }
+
+    function validLeaveCreate() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'ownerUid',
+          'ogrenciAd',
+          'gidisTarihi',
+          'donusTarihi',
+          'sebep',
+          'durum',
+          'tarih'
+        ])
+        && d.keys().hasOnly([
+          'ownerUid',
+          'ogrenciAd',
+          'gidisTarihi',
+          'donusTarihi',
+          'sebep',
+          'durum',
+          'tarih'
+        ])
+        && d.ownerUid == request.auth.uid
+        && d.ogrenciAd == callerProfile().adSoyad
+        && d.gidisTarihi is string
+        && d.gidisTarihi.size() > 0
+        && d.donusTarihi is string
+        && d.donusTarihi.size() > 0
+        && d.sebep is string
+        && d.sebep.size() > 0
+        && d.durum == 'Beklemede'
+        && d.tarih is string
+        && d.tarih.size() > 0;
+    }
+
+    function validLeaveAdminUpdate() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys()
+          .hasOnly(['durum', 'onaylayanAdmin', 'islemTarihi'])
+        && d.ownerUid == resource.data.ownerUid
+        && d.ogrenciAd == resource.data.ogrenciAd
+        && d.gidisTarihi == resource.data.gidisTarihi
+        && d.donusTarihi == resource.data.donusTarihi
+        && d.sebep == resource.data.sebep
+        && d.tarih == resource.data.tarih
+        && d.durum in ['Onaylandı', 'Reddedildi']
+        && d.onaylayanAdmin is string
+        && d.onaylayanAdmin.size() > 0
+        && d.islemTarihi is string
+        && d.islemTarihi.size() > 0;
+    }
+
+    function validMezunGirisUpdate() {
+      let d = request.resource.data;
+      let changed = d.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['enabled', 'welcomeTitle', 'welcomeMessage', 'updatedAt'])
+        && !('password' in d)
+        && !changed.hasAny(['username', 'password'])
+        && (!('welcomeTitle' in d) || (d.welcomeTitle is string && d.welcomeTitle.size() > 0))
+        && (!('welcomeMessage' in d) || (d.welcomeMessage is string && d.welcomeMessage.size() > 0))
+        && (!('updatedAt' in d) || (d.updatedAt is string && d.updatedAt.size() > 0))
+        && (!('enabled' in d) || d.enabled is bool);
+    }
+
+    function validLandingWrite() {
+      let d = request.resource.data;
+      return d.keys().hasAll([
+          'hero',
+          'hakkimizda',
+          'kurucu',
+          'misyon',
+          'vizyon',
+          'galeri',
+          'iletisim',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && d.keys().hasOnly([
+          'hero',
+          'hakkimizda',
+          'kurucu',
+          'misyon',
+          'vizyon',
+          'galeri',
+          'iletisim',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && d.hero is map
+        && d.hakkimizda is map
+        && d.kurucu is map
+        && d.misyon is map
+        && d.vizyon is map
+        && d.galeri is list
+        && d.iletisim is map
+        && d.updatedAt is string
+        && d.updatedAt.size() > 0
+        && d.updatedBy is string
+        && d.updatedBy.size() > 0;
+    }
+
+    function validGraduateDoc() {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+          'adSoyad',
+          'girisYili',
+          'bolum',
+          'mezuniyetYili',
+          'evlilikDurumu',
+          'cocukSayisi',
+          'gorev',
+          'calistigiYer',
+          'sehir',
+          'iletisim',
+          'photoUrl',
+          'notlar',
+          'sosyalMedya',
+          'siraNo',
+          'createdAt',
+          'updatedAt'
+        ])
+        && !('password' in d)
+        && d.adSoyad is string
+        && d.adSoyad.size() > 0
+        && (d.girisYili is int || d.girisYili is float)
+        && (!('bolum' in d) || (d.bolum is string && d.bolum.size() > 0))
+        && (!('mezuniyetYili' in d) || d.mezuniyetYili is int || d.mezuniyetYili is float)
+        && (!('evlilikDurumu' in d) || d.evlilikDurumu in ['Belirtilmemiş', 'Bekar', 'Evli'])
+        && (!('cocukSayisi' in d) || d.cocukSayisi is int || d.cocukSayisi is float)
+        && (!('gorev' in d) || (d.gorev is string && d.gorev.size() > 0))
+        && (!('calistigiYer' in d) || (d.calistigiYer is string && d.calistigiYer.size() > 0))
+        && (!('sehir' in d) || (d.sehir is string && d.sehir.size() > 0))
+        && (!('iletisim' in d) || (d.iletisim is string && d.iletisim.size() > 0))
+        && (!('photoUrl' in d) || (d.photoUrl is string && d.photoUrl.size() > 0))
+        && (!('notlar' in d) || (d.notlar is string && d.notlar.size() > 0))
+        && (!('sosyalMedya' in d) || (d.sosyalMedya is string && d.sosyalMedya.size() > 0))
+        && (!('siraNo' in d) || d.siraNo is int || d.siraNo is float)
+        && (!('createdAt' in d) || (d.createdAt is string && d.createdAt.size() > 0))
+        && (!('updatedAt' in d) || (d.updatedAt is string && d.updatedAt.size() > 0));
+    }
+
+    function validGraduateCreate() {
+      return validGraduateDoc()
+        && request.resource.data.keys().hasAll(['adSoyad', 'girisYili', 'createdAt', 'updatedAt']);
+    }
+
+    function validGraduateUpdate() {
+      let d = request.resource.data;
+      return validGraduateDoc()
+        && d.keys().hasAll(['adSoyad', 'girisYili', 'updatedAt'])
+        && (
+          !('createdAt' in resource.data)
+            ? !('createdAt' in d)
+            : d.createdAt == resource.data.createdAt
+        );
+    }
+
+    function validGraduateWelcomeWrite() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['welcomeTitle', 'welcomeMessage', 'updatedAt'])
+        && d.keys().hasOnly(['welcomeTitle', 'welcomeMessage', 'updatedAt'])
+        && !('password' in d)
+        && !('username' in d)
+        && !('enabled' in d)
+        && d.welcomeTitle is string
+        && d.welcomeTitle.size() > 0
+        && d.welcomeMessage is string
+        && d.welcomeMessage.size() > 0
+        && d.updatedAt is string
+        && d.updatedAt.size() > 0;
+    }
+
+    function adminAuditIslem() {
+      return request.resource.data.islem in [
+        'İzin Onayı',
+        'İzin Reddi',
+        'Yoklama Kaydı',
+        'Not Güncelleme',
+        'Excel İçe Aktarma',
+        'Öğrenci Silme',
+        'Site İçeriği Güncelleme',
+        'Mezun Giriş Ayarları',
+        'Mezun Silme',
+        'Toplu Sınıf Yükseltme',
+        'Mali Gelir Kaydı',
+        'Mali Gider Kaydı',
+        'Mali Devir Kaydı',
+        'Zekât Bağış Dönüşümü',
+        'Bağış Konum Değişimi',
+        'Mali İşlem Düzenleme',
+        'Mali İşlem İptali',
+        'Haftalık Mali Rapor Oluşturma'
+      ];
+    }
+
+    function validAuditCreate() {
+      let d = request.resource.data;
+      let p = callerProfile();
+      return d.keys().hasAll(['islem', 'actorUid', 'yapan', 'rol', 'timestamp'])
+        && (
+          d.keys().hasOnly(['islem', 'actorUid', 'yapan', 'rol', 'timestamp'])
+          || d.keys().hasOnly(['islem', 'detay', 'actorUid', 'yapan', 'rol', 'timestamp'])
+        )
+        && d.actorUid == request.auth.uid
+        && d.actorUid is string
+        && d.actorUid.size() > 0
+        && d.rol == p.role
+        && d.rol is string
+        && d.yapan == p.adSoyad
+        && d.yapan is string
+        && d.yapan.size() > 0
+        && d.yapan.size() <= 120
+        && d.islem is string
+        && d.islem.size() > 0
+        && d.islem.size() <= 80
+        && (
+          !('detay' in d)
+          || (d.detay is string && d.detay.size() > 0 && d.detay.size() <= 500)
+        )
+        && d.timestamp == request.time;
+    }
+
+    // ---- users (Auth profiles; client create denied) ----
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if false;
+      allow update: if signedIn() && (selfUserAllowlistUpdate(uid) || adminUserAllowlistUpdate());
       allow delete: if false;
     }
 
-    // Diger koleksiyonlar - giris yapmis herkes okuyabilir
+    // ---- ogrenciler (student roster; list admin-only) ----
+    match /ogrenciler/{docId} {
+      allow get: if isAdmin() || isOwnStudent(resource.data);
+      allow list: if isAdmin();
+
+      allow create: if isAdmin()
+        && noPasswordField()
+        && !('ownerUid' in request.resource.data);
+
+      allow update: if (isAdmin() && validStudentAdminUpdate())
+        || validStudentSelfGradeUpdate();
+
+      allow delete: if isAdmin();
+    }
+
+    // ---- yoklama_roster (minimal attendance list) ----
+    match /yoklama_roster/{studentId} {
+      allow read: if isAdmin() || canManageAttendance();
+      allow create, update: if isAdmin() && validRosterDoc(studentId);
+      allow delete: if isAdmin();
+    }
+
+    // ---- yoklamalar ----
+    // Debt: signed-in read is temporary for Student Reports until student-specific model.
     match /yoklamalar/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn();
+      allow create: if (isAdmin() || canManageAttendance()) && validAttendanceCreate();
+      allow update: if (isAdmin() || canManageAttendance()) && validAttendanceUpdate();
+      allow delete: if isAdmin();
     }
 
+    // ---- duyurular ----
     match /duyurular/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if signedIn();
+      allow create: if canManageAnnouncements() && validAnnouncementCreate();
+      allow update: if canManageAnnouncements() && validAnnouncementUpdate();
+      allow delete: if canManageAnnouncements();
     }
 
-    match /evciTalepleri/{docId} {
-      allow read, write: if request.auth != null;
-    }
-
+    // ---- gunluk_gorevler ----
     match /gunluk_gorevler/{docId} {
-      allow read, write: if request.auth != null;
+      allow get: if signedIn()
+        && callerProfile().role != 'graduate';
+      allow list: if isAdmin() || canManageAttendance();
+      allow create, update: if canManageAnnouncements()
+        && isValidDutyDocId(docId)
+        && validDailyDutyWrite();
+      allow delete: if canManageAnnouncements() && isValidDutyDocId(docId);
     }
 
+    // ---- mali_islemler (admin-only financial ledger; canceled records remain auditable) ----
+    match /mali_islemler/{docId} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() && validFinanceCreate();
+      allow update: if isAdmin() && validFinanceUpdate();
+      allow delete: if false;
+    }
+
+    // ---- evciTalepleri ----
+    match /evciTalepleri/{docId} {
+      allow read: if isAdmin() || (isLeaveOwner(resource.data) && !canManageAttendance());
+      allow create: if signedIn()
+        && callerProfile().role == 'student'
+        && !canManageAttendance()
+        && validLeaveCreate();
+      allow update: if isAdmin() && validLeaveAdminUpdate();
+      allow delete: if false;
+    }
+
+    // ---- yoneticiler (legacy; Auth-only login — client deny-all) ----
+    match /yoneticiler/{docId} {
+      allow read, write: if false;
+    }
+
+    // ---- islem_loglari (append-only audit) ----
     match /islem_loglari/{docId} {
-      allow read, write: if request.auth != null;
+      allow get, list: if isAdmin();
+      allow create: if signedIn()
+        && validAuditCreate()
+        && (
+          (isAdmin() && adminAuditIslem())
+          || (canManageAttendance() && request.resource.data.islem == 'Yoklama Kaydı')
+        );
+      allow update, delete: if false;
     }
 
     match /ayarlar/{docId} {
-      allow read: if signedIn() || docId == 'mezun_giris';
-      allow write: if signedIn();
+      allow get: if docId == 'mezun_giris' && isAdmin();
+      allow list: if false;
+      allow create: if false;
+      allow update: if docId == 'mezun_giris' && isAdmin() && validMezunGirisUpdate();
+      allow delete: if false;
     }
 
     match /mezunlar/{docId} {
-      allow read: if signedIn();
-      allow write: if signedIn();
+      allow get, list: if isAdmin() || isGraduate();
+      allow create: if isAdmin() && validGraduateCreate();
+      allow update: if isAdmin() && validGraduateUpdate();
+      allow delete: if isAdmin();
     }
 
-    // Ana sayfa icerigi - herkes okuyabilir, giris yapmis yonetici yazabilir
-    // (isAdmin() users/{uid} dokumanina bagli; gecis doneminde tum giris yapanlar)
     match /site_ayarlari/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
+      allow get: if docId == 'landing';
+      allow list: if false;
+      allow create, update: if docId == 'landing' && isAdmin() && validLandingWrite();
+      allow delete: if false;
+    }
+
+    match /mezun_ayarlar/{docId} {
+      allow get: if docId == 'karsilama' && (isAdmin() || isGraduate());
+      allow list: if false;
+      allow create, update: if docId == 'karsilama' && isAdmin() && validGraduateWelcomeWrite();
+      allow delete: if false;
     }
   }
 }

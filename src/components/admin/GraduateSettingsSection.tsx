@@ -3,49 +3,43 @@ import { GraduationCap, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import { ImageUploadField } from '@/components/admin/ImageUploadField'
 import { PROFILE_IMAGE_OPTS } from '@/lib/avatar'
 import { Button } from '@/components/ui/Button'
-import { Card, CardDescription, CardTitle } from '@/components/ui/Card'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
 import { Spinner } from '@/components/ui/Spinner'
-import { Switch } from '@/components/ui/Switch'
 import { Textarea } from '@/components/ui/Textarea'
 import { Badge } from '@/components/ui/Badge'
 import { logAudit } from '@/services/audit.service'
 import {
   createGraduate,
+  DEFAULT_GRADUATE_WELCOME,
   deleteGraduate,
   EMPTY_GRADUATE_FORM,
-  fetchGraduateLoginSettings,
+  fetchGraduateWelcomeSettings,
   fetchGraduates,
   graduateToForm,
   groupGraduatesByYear,
-  saveGraduateLoginSettings,
+  saveGraduateWelcomeSettings,
   updateGraduate,
 } from '@/services/graduates.service'
 import { askConfirm } from '@/stores/confirm.store'
-import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
-import type { EvlilikDurumu, Graduate, GraduateFormData, GraduateLoginSettings } from '@/types'
+import type { EvlilikDurumu, Graduate, GraduateFormData, GraduateWelcomeSettings } from '@/types'
 
 const EVLILIK_OPTIONS: EvlilikDurumu[] = ['Belirtilmemiş', 'Bekar', 'Evli']
 
 export function GraduateSettingsSection() {
-  const profile = useAuthStore((s) => s.profile)
   const showToast = useToastStore((s) => s.showToast)
 
   const [loading, setLoading] = useState(true)
   const [savingLogin, setSavingLogin] = useState(false)
   const [graduates, setGraduates] = useState<Graduate[]>([])
-  const [storedPassword, setStoredPassword] = useState<string | undefined>()
 
-  const [loginForm, setLoginForm] = useState<GraduateLoginSettings>({
-    username: '',
-    password: '',
-    enabled: true,
-    welcomeTitle: 'Mezun Ağı',
-    welcomeMessage: 'Yurt arkadaşlarınızın güncel hayat hikâyelerini keşfedin.',
+  const [loginForm, setLoginForm] = useState<GraduateWelcomeSettings>({
+    welcomeTitle: DEFAULT_GRADUATE_WELCOME.welcomeTitle,
+    welcomeMessage: DEFAULT_GRADUATE_WELCOME.welcomeMessage,
   })
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -58,19 +52,14 @@ export function GraduateSettingsSection() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [settings, list] = await Promise.all([fetchGraduateLoginSettings(), fetchGraduates()])
-      if (settings) {
-        setLoginForm({
-          username: settings.username || '',
-          password: settings.password || '',
-          enabled: settings.enabled !== false,
-          welcomeTitle: settings.welcomeTitle || 'Mezun Ağı',
-          welcomeMessage:
-            settings.welcomeMessage ||
-            'Yurt arkadaşlarınızın güncel hayat hikâyelerini keşfedin.',
-        })
-        setStoredPassword(settings.password)
-      }
+      const [settings, list] = await Promise.all([
+        fetchGraduateWelcomeSettings(),
+        fetchGraduates(),
+      ])
+      setLoginForm({
+        welcomeTitle: settings.welcomeTitle,
+        welcomeMessage: settings.welcomeMessage,
+      })
       setGraduates(list)
     } catch (err) {
       showToast('error', 'Mezun verileri yüklenemedi', err instanceof Error ? err.message : undefined)
@@ -96,36 +85,16 @@ export function GraduateSettingsSection() {
   }
 
   const saveLoginSettings = async () => {
-    if (!loginForm.username.trim() || !loginForm.password.trim()) {
-      showToast('error', 'Kullanıcı adı ve şifre zorunludur')
-      return
-    }
-    if (loginForm.password.length < 6) {
-      showToast('error', 'Şifre en az 6 karakter olmalıdır')
-      return
-    }
-
     setSavingLogin(true)
     try {
-      const result = await saveGraduateLoginSettings(loginForm, storedPassword)
-      setStoredPassword(loginForm.password)
+      await saveGraduateWelcomeSettings(loginForm)
 
       await logAudit({
         islem: 'Mezun Giriş Ayarları',
-        detay: `Kullanıcı: ${loginForm.username}`,
-        yapan: profile?.adSoyad || 'Yönetici',
-        rol: 'admin',
+        detay: 'Karşılama metinleri güncellendi',
       })
 
-      if (result === 'created' || result === 'updated') {
-        showToast(
-          'success',
-          'Mezun girişi kaydedildi',
-          'Oturumunuz kapanmış olabilir; tekrar yönetici olarak giriş yapın.',
-        )
-      } else {
-        showToast('success', 'Mezun giriş ayarları güncellendi')
-      }
+      showToast('success', 'Mezun karşılama ayarları güncellendi')
     } catch (err) {
       showToast('error', 'Kaydedilemedi', err instanceof Error ? err.message : undefined)
     } finally {
@@ -172,8 +141,6 @@ export function GraduateSettingsSection() {
       await logAudit({
         islem: 'Mezun Silme',
         detay: graduate.adSoyad,
-        yapan: profile?.adSoyad || 'Yönetici',
-        rol: 'admin',
       })
       showToast('success', 'Mezun silindi')
       await loadAll()
@@ -188,86 +155,65 @@ export function GraduateSettingsSection() {
 
   return (
     <div className="space-y-6">
-      <Card accent="primary" className="lg:col-span-2">
-        <div className="flex items-start gap-3">
-          <GraduationCap className="mt-1 h-6 w-6 text-primary-600" />
-          <div className="flex-1">
-            <CardTitle>Mezun Girişi</CardTitle>
-            <CardDescription>
-              Tüm mezunlar bu ortak kullanıcı adı ve şifre ile giriş yapar. İlk kayıtta veya şifre
-              değişiminde oturumunuz kapanabilir.
-            </CardDescription>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <Input
-                id="mezun-username"
-                label="Ortak Kullanıcı Adı"
-                value={loginForm.username}
-                onChange={(event) => setLoginForm((prev) => ({ ...prev, username: event.target.value }))}
-              />
-              <Input
-                id="mezun-password"
-                label="Ortak Şifre"
-                type="text"
-                value={loginForm.password}
-                onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
-              />
-              <Input
-                id="mezun-welcome-title"
-                label="Karşılama Başlığı"
-                value={loginForm.welcomeTitle || ''}
-                onChange={(event) => setLoginForm((prev) => ({ ...prev, welcomeTitle: event.target.value }))}
-              />
-              <div className="flex items-end">
-                <Switch
-                  id="mezun-enabled"
-                  label="Mezun girişi açık"
-                  checked={loginForm.enabled !== false}
-                  onChange={(checked) => setLoginForm((prev) => ({ ...prev, enabled: checked }))}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Textarea
-                  id="mezun-welcome-message"
-                  label="Karşılama Mesajı"
-                  rows={3}
-                  value={loginForm.welcomeMessage || ''}
-                  onChange={(event) =>
-                    setLoginForm((prev) => ({ ...prev, welcomeMessage: event.target.value }))
-                  }
-                />
-              </div>
-            </div>
-
-            <Button className="mt-4" onClick={saveLoginSettings} disabled={savingLogin}>
-              {savingLogin ? 'Kaydediliyor...' : 'Giriş Bilgilerini Kaydet'}
-            </Button>
+      <CollapsibleSection
+        storageKey="gv-settings-mezun-girisi-open"
+        accent="primary"
+        icon={<GraduationCap className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
+        title="Mezun Girişi"
+        description="Karşılama metinlerini yönetin. Ortak mezun hesabı kimliği sabittir (mezun.portal)."
+      >
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          Mezun giriş parolası güvenli yönetim aracıyla değiştirilir. Web panelinden şifre
+          görüntülenmez, yazılmaz veya Auth üzerinden güncellenmez. Portalı kapatmak için
+          shared Auth hesabı local Admin SDK ile disable edilir; Firestore `enabled` alanı
+          güvenlik sınırı değildir.
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Input
+            id="mezun-welcome-title"
+            label="Karşılama Başlığı"
+            value={loginForm.welcomeTitle || ''}
+            onChange={(event) =>
+              setLoginForm((prev) => ({ ...prev, welcomeTitle: event.target.value }))
+            }
+          />
+          <div className="md:col-span-2">
+            <Textarea
+              id="mezun-welcome-message"
+              label="Karşılama Mesajı"
+              rows={3}
+              value={loginForm.welcomeMessage || ''}
+              onChange={(event) =>
+                setLoginForm((prev) => ({ ...prev, welcomeMessage: event.target.value }))
+              }
+            />
           </div>
         </div>
-      </Card>
 
-      <Card accent="primary">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <Users className="mt-1 h-6 w-6 text-primary-600" />
-            <div>
-              <CardTitle>Mezun Kayıtları</CardTitle>
-              <CardDescription>Giriş yılına göre gruplanan mezun bilgileri</CardDescription>
-            </div>
-          </div>
+        <Button className="mt-4" onClick={saveLoginSettings} disabled={savingLogin}>
+          {savingLogin ? 'Kaydediliyor...' : 'Karşılama Ayarlarını Kaydet'}
+        </Button>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        storageKey="gv-settings-mezun-kayitlari-open"
+        accent="primary"
+        icon={<Users className="h-6 w-6 text-primary-600 dark:text-primary-400" />}
+        title="Mezun Kayıtları"
+        description={`Giriş yılına göre gruplanan mezun bilgileri${graduates.length > 0 ? ` · ${graduates.length} mezun` : ''}`}
+        actions={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" /> Yeni Mezun
           </Button>
-        </div>
-
+        }
+      >
         {graduates.length === 0 ? (
           <EmptyState
-            className="mt-6"
             title="Henüz mezun eklenmedi"
             description="Mezunları giriş yılına göre ekleyerek mezun ağını oluşturun."
           />
         ) : (
-          <div className="mt-6 space-y-6">
+          <div className="space-y-6">
             {[...groups.entries()].map(([year, list]) => (
               <div key={year}>
                 <div className="mb-3 flex items-center gap-2">
@@ -283,8 +229,10 @@ export function GraduateSettingsSection() {
                       className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/50"
                     >
                       <div>
-                        <p className="font-bold text-slate-900 dark:text-slate-100">{graduate.adSoyad}</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="font-bold text-slate-900 dark:text-slate-100">
+                          {graduate.adSoyad}
+                        </p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
                           {[graduate.gorev, graduate.calistigiYer, graduate.sehir]
                             .filter(Boolean)
                             .join(' · ') || 'Bilgi girilmemiş'}
@@ -294,8 +242,12 @@ export function GraduateSettingsSection() {
                         <Button variant="ghost" size="sm" onClick={() => openEdit(graduate)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => removeGraduate(graduate)}>
-                          <Trash2 className="h-4 w-4 text-rose-600" />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeGraduate(graduate)}
+                        >
+                          <Trash2 className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                         </Button>
                       </div>
                     </div>
@@ -305,7 +257,7 @@ export function GraduateSettingsSection() {
             ))}
           </div>
         )}
-      </Card>
+      </CollapsibleSection>
 
       <Modal
         open={modalOpen}

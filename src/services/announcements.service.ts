@@ -2,14 +2,17 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  documentId,
   doc,
   getDoc,
   getDocs,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { todayISO } from '@/lib/dates'
@@ -127,10 +130,16 @@ export function filterAnnouncementsForDisplay(
 }
 
 export async function fetchDailyDuties(): Promise<DailyDuty[]> {
-  const snap = await getDocs(collection(db, GOREV_COL))
+  // Past assignments remain available in Firestore for safety, but disappear from the management list.
+  const q = query(
+    collection(db, GOREV_COL),
+    where(documentId(), '>=', todayISO()),
+    orderBy(documentId(), 'asc'),
+  )
+  const snap = await getDocs(q)
   const items: DailyDuty[] = []
   snap.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() } as DailyDuty))
-  return items.sort((a, b) => b.id.localeCompare(a.id))
+  return items
 }
 
 export async function fetchTodayDuty(): Promise<DailyDuty | null> {
@@ -144,6 +153,90 @@ export async function saveDailyDuty(tarih: string, imam: string, muezzin: string
     imam,
     muezzin,
     guncellemeZamani: serverTimestamp(),
+  })
+}
+
+export interface DailyDutyImportItem {
+  tarih: string
+  imam: string
+  muezzin: string
+  /** The value displayed in the preview. A mismatch aborts the whole import instead of overwriting a newer edit. */
+  expectedExisting: Pick<DailyDuty, 'imam' | 'muezzin'> | null
+}
+
+export interface DailyDutyImportResult {
+  created: number
+  updated: number
+  unchanged: number
+}
+
+function sameDuty(
+  left: Pick<DailyDuty, 'imam' | 'muezzin'> | null,
+  right: Pick<DailyDuty, 'imam' | 'muezzin'> | null,
+): boolean {
+  return left?.imam === right?.imam && left?.muezzin === right?.muezzin
+}
+
+/**
+ * Atomically imports one monthly schedule after preview.
+ * Any duty changed by someone else after the preview aborts the entire write.
+ */
+export async function importDailyDuties(items: DailyDutyImportItem[]): Promise<DailyDutyImportResult> {
+  if (items.length === 0) return { created: 0, updated: 0, unchanged: 0 }
+  if (items.length > 31) throw new Error('Bir seferde en fazla 31 günlük görev aktarılabilir.')
+
+  const seenDates = new Set<string>()
+  const normalized = items.map((item) => {
+    const tarih = item.tarih.trim()
+    const imam = item.imam.trim()
+    const muezzin = item.muezzin.trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tarih) || !imam || !muezzin || seenDates.has(tarih)) {
+      throw new Error('İçe aktarma listesinde geçersiz veya yinelenen görev bulundu.')
+    }
+    seenDates.add(tarih)
+    return {
+      tarih,
+      imam,
+      muezzin,
+      expectedExisting: item.expectedExisting,
+    }
+  })
+
+  return runTransaction(db, async (transaction) => {
+    const refs = normalized.map((item) => doc(db, GOREV_COL, item.tarih))
+    const snapshots = await Promise.all(refs.map((ref) => transaction.get(ref)))
+    let created = 0
+    let updated = 0
+    let unchanged = 0
+
+    for (let index = 0; index < normalized.length; index += 1) {
+      const item = normalized[index]
+      const snap = snapshots[index]
+      const current = snap.exists()
+        ? {
+            imam: String(snap.data().imam || ''),
+            muezzin: String(snap.data().muezzin || ''),
+          }
+        : null
+
+      if (!sameDuty(current, item.expectedExisting)) {
+        throw new Error('Görev listesi önizlemeden sonra değişti. Lütfen PDF’yi yeniden okuyun.')
+      }
+      if (sameDuty(current, item)) {
+        unchanged += 1
+        continue
+      }
+
+      transaction.set(refs[index], {
+        imam: item.imam,
+        muezzin: item.muezzin,
+        guncellemeZamani: serverTimestamp(),
+      })
+      if (current) updated += 1
+      else created += 1
+    }
+
+    return { created, updated, unchanged }
   })
 }
 

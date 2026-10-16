@@ -30,6 +30,9 @@ const AdminGradesPage = lazy(() =>
 const AdminReportsPage = lazy(() =>
   import('@/pages/admin/ReportsPage').then((m) => ({ default: m.AdminReportsPage })),
 )
+const AdminFinancePage = lazy(() =>
+  import('@/pages/admin/FinancePage').then((m) => ({ default: m.AdminFinancePage })),
+)
 const AdminSettingsPage = lazy(() =>
   import('@/pages/admin/SettingsPage').then((m) => ({ default: m.AdminSettingsPage })),
 )
@@ -110,6 +113,7 @@ export default function App() {
               <Route path="/admin/duyuru" element={<AdminAnnouncementsPage />} />
               <Route path="/admin/notlar" element={<AdminGradesPage />} />
               <Route path="/admin/raporlar" element={<AdminReportsPage />} />
+              <Route path="/admin/kasa" element={<AdminFinancePage />} />
               <Route path="/admin/ayarlar" element={<AdminSettingsPage />} />
               <Route path="/admin/site" element={<AdminSitePage />} />
               <Route path="/admin/profil" element={<ProfilePage />} />

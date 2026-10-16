@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import {
   BarChart3,
   CheckCircle2,
@@ -10,15 +10,16 @@ import {
   Settings,
   UserCircle,
   Users,
+  WalletCards,
 } from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { MobileRadialNav } from '@/components/layout/MobileRadialNav'
 import { ProfileAvatar } from '@/components/shared/ProfileAvatar'
 import { Button } from '@/components/ui/Button'
+import { useNavItems, type NavIconKey } from '@/hooks/useNavItems'
 import { logout } from '@/services/auth.service'
 import { askConfirm } from '@/stores/confirm.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
-import { ADMIN_NAV, STUDENT_ATTENDANCE_NAV, STUDENT_NAV } from '@/config/navigation'
 import { cn } from '@/lib/utils'
 
 function profilePath(role?: string) {
@@ -34,28 +35,10 @@ const iconMap = {
   megaphone: Megaphone,
   'graduation-cap': GraduationCap,
   'bar-chart': BarChart3,
+  'wallet-cards': WalletCards,
   settings: Settings,
   globe: Globe,
-}
-
-function useNavItems() {
-  const profile = useAuthStore((state) => state.profile)
-  if (!profile) return []
-
-  if (profile.role === 'admin') {
-    return ADMIN_NAV
-  }
-
-  if (profile.role === 'graduate') {
-    return [{ id: 'mezun', label: 'Mezun Ağı', path: '/mezun', icon: 'graduation-cap' as const }]
-  }
-
-  if (profile.canManageAttendance) {
-    return [...STUDENT_NAV.slice(0, 1), ...STUDENT_ATTENDANCE_NAV, ...STUDENT_NAV.slice(1)]
-  }
-
-  return STUDENT_NAV
-}
+} satisfies Record<NavIconKey, typeof Home>
 
 export function AppHeader() {
   const profile = useAuthStore((state) => state.profile)
@@ -128,48 +111,6 @@ export function AppHeader() {
   )
 }
 
-function NavLinkItem({
-  path,
-  label,
-  icon,
-}: {
-  path: string
-  label: string
-  icon: keyof typeof iconMap
-}) {
-  const Icon = iconMap[icon]
-
-  return (
-    <NavLink
-      to={path}
-      end={path.endsWith('/admin') || path.endsWith('/ogrenci') || path.endsWith('/mezun')}
-      className={({ isActive }) =>
-        cn(
-          'flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold transition',
-          isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400',
-        )
-      }
-    >
-      <Icon className="h-5 w-5" />
-      <span>{label}</span>
-    </NavLink>
-  )
-}
-
-export function BottomNav() {
-  const items = useNavItems()
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:hidden">
-      <div className="mx-auto flex max-w-lg items-center justify-around">
-        {items.map((item) => (
-          <NavLinkItem key={item.id} path={item.path} label={item.label} icon={item.icon} />
-        ))}
-      </div>
-    </nav>
-  )
-}
-
 export function SidebarNav() {
   const items = useNavItems()
 
@@ -215,7 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarNav />
         <main className="min-h-[calc(100dvh-4rem)] flex-1">{children}</main>
       </div>
-      <BottomNav />
+      <MobileRadialNav />
     </div>
   )
 }

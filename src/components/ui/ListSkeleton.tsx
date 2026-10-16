@@ -4,12 +4,12 @@ export function ListSkeleton({ rows = 6 }: { rows?: number }) {
       {Array.from({ length: rows }, (_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+          className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/40"
         >
-          <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-200" />
+          <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-200 dark:bg-slate-700" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-40 rounded bg-slate-200" />
-            <div className="h-3 w-56 rounded bg-slate-100" />
+            <div className="h-4 w-40 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-3 w-56 rounded bg-slate-100 dark:bg-slate-700/70" />
           </div>
         </div>
       ))}

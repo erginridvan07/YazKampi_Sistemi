@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
-import { FileDown, FileSpreadsheet, FileUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowUpFromLine, Camera, FileDown, FileSpreadsheet, FileUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BulkPromoteStudentsModal } from '@/components/admin/BulkPromoteStudentsModal'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ProfileAvatar } from '@/components/shared/ProfileAvatar'
 import { Badge } from '@/components/ui/Badge'
@@ -13,6 +14,7 @@ import { Switch } from '@/components/ui/Switch'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BOLUMLER, DONEMLER, ODALAR, SINIFLAR } from '@/config/constants'
 import { CACHE_KEYS, getCachedQuery } from '@/lib/queryCache'
+import { compressImageToDataUrl } from '@/lib/avatar'
 import { useAsync } from '@/hooks/useAsync'
 import {
   createStudent,
@@ -30,9 +32,9 @@ import {
   type ImportPreview,
 } from '@/lib/excel/studentsExcel'
 import { logAudit } from '@/services/audit.service'
+import { removeStudentProfilePhoto, updateStudentProfilePhoto } from '@/services/profile.service'
 import type { Student, StudentFormData } from '@/types'
 import { askConfirm } from '@/stores/confirm.store'
-import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
 
 const emptyForm: StudentFormData = {
@@ -47,7 +49,6 @@ const emptyForm: StudentFormData = {
 }
 
 export function AdminStudentsPage() {
-  const profile = useAuthStore((s) => s.profile)
   const showToast = useToastStore((s) => s.showToast)
   const { data: students, loading, reload } = useAsync(
     fetchStudentsList,
@@ -61,7 +62,10 @@ export function AdminStudentsPage() {
   const [saving, setSaving] = useState(false)
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
   const [importing, setImporting] = useState(false)
+  const [promoteOpen, setPromoteOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [photoSaving, setPhotoSaving] = useState(false)
 
   const filtered = useMemo(() => {
     if (!students) return []
@@ -88,7 +92,6 @@ export function AdminStudentsPage() {
     setForm({
       adSoyad: student.adSoyad,
       username: student.username,
-      password: student.password || '',
       bolum: student.bolum,
       sinif: String(student.sinif),
       odaNo: String(student.odaNo),
@@ -99,7 +102,7 @@ export function AdminStudentsPage() {
   }
 
   const handleSave = async () => {
-    if (!form.adSoyad || !form.username || !form.password || !form.bolum || !form.odaNo) {
+    if (!form.adSoyad || !form.username || !form.bolum || !form.odaNo) {
       showToast('error', 'Lütfen zorunlu alanları doldurun')
       return
     }
@@ -109,8 +112,12 @@ export function AdminStudentsPage() {
         await updateStudent(editing.id, form)
         showToast('success', 'Öğrenci güncellendi')
       } else {
-        await createStudent(form)
-        showToast('success', 'Öğrenci kaydedildi')
+        const createdId = await createStudent(form)
+        showToast(
+          'success',
+          'Öğrenci kaydı oluşturuldu',
+          `Giriş hesabı henüz hazır değil. Yerel Öğrenci Hesap Yönetimi ekranından oluşturabilirsiniz (kayıt: ${createdId}).`,
+        )
       }
       setModalOpen(false)
       await reload()
@@ -118,6 +125,41 @@ export function AdminStudentsPage() {
       showToast('error', 'Kayıt başarısız', err instanceof Error ? err.message : undefined)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleStudentPhotoSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !editing?.ownerUid) return
+
+    setPhotoSaving(true)
+    try {
+      const photoUrl = await compressImageToDataUrl(file)
+      await updateStudentProfilePhoto(editing.ownerUid, photoUrl)
+      setEditing((current) => (current ? { ...current, photoUrl } : current))
+      showToast('success', 'Öğrenci profil fotoğrafı güncellendi')
+      await reload()
+    } catch (err) {
+      showToast('error', 'Fotoğraf yüklenemedi', err instanceof Error ? err.message : undefined)
+    } finally {
+      setPhotoSaving(false)
+    }
+  }
+
+  const handleStudentPhotoRemove = async () => {
+    if (!editing?.ownerUid || !editing.photoUrl) return
+
+    setPhotoSaving(true)
+    try {
+      await removeStudentProfilePhoto(editing.ownerUid)
+      setEditing((current) => (current ? { ...current, photoUrl: undefined } : current))
+      showToast('success', 'Öğrenci profil fotoğrafı kaldırıldı')
+      await reload()
+    } catch (err) {
+      showToast('error', 'Fotoğraf kaldırılamadı', err instanceof Error ? err.message : undefined)
+    } finally {
+      setPhotoSaving(false)
     }
   }
 
@@ -159,13 +201,11 @@ export function AdminStudentsPage() {
       await logAudit({
         islem: 'Excel İçe Aktarma',
         detay: `${result.created} eklendi, ${result.skipped} atlandı`,
-        yapan: profile?.adSoyad || 'Yönetici',
-        rol: 'admin',
       })
       showToast(
         'success',
         'İçe aktarma tamamlandı',
-        `${result.created} yeni · ${result.skipped} atlandı · ${importPreview.invalid.length} hatalı satır`,
+        `${result.created} yeni · ${result.skipped} atlandı · ${importPreview.invalid.length} hatalı satır. Giriş hesapları için local provisioning gerekli.`,
       )
       setImportPreview(null)
       await reload()
@@ -184,9 +224,9 @@ export function AdminStudentsPage() {
       cancelLabel: 'Vazgeç',
       variant: 'danger',
       children: (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm">
-          <p className="font-bold text-slate-900">{student.adSoyad}</p>
-          <p className="mt-1 text-slate-600">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm dark:border-rose-800 dark:bg-rose-950/40">
+          <p className="font-bold text-slate-900 dark:text-slate-100">{student.adSoyad}</p>
+          <p className="mt-1 text-slate-600 dark:text-slate-400">
             {student.bolum} · Oda {student.odaNo} · @{student.username}
           </p>
         </div>
@@ -198,8 +238,6 @@ export function AdminStudentsPage() {
       await logAudit({
         islem: 'Öğrenci Silme',
         detay: student.adSoyad,
-        yapan: profile?.adSoyad || 'Yönetici',
-        rol: 'admin',
       })
       showToast('success', 'Öğrenci silindi')
       await reload()
@@ -245,6 +283,14 @@ export function AdminStudentsPage() {
               className="hidden"
               onChange={handleFileSelect}
             />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPromoteOpen(true)}
+              disabled={!students?.length}
+            >
+              <ArrowUpFromLine className="h-4 w-4" /> Toplu Sınıf Yükselt
+            </Button>
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" /> Yeni Öğrenci
             </Button>
@@ -265,51 +311,54 @@ export function AdminStudentsPage() {
         <EmptyState title="Öğrenci bulunamadı" description="Arama kriterlerini değiştirin veya yeni öğrenci ekleyin." />
       ) : (
         Object.entries(groups).map(([bolum, list]) => (
-            <Card key={bolum} className="mb-6">
-              <div className="mb-4 flex items-center gap-2">
-                <CardTitle>{bolum}</CardTitle>
-                <Badge tone="primary">{list.length} öğrenci</Badge>
-              </div>
-              <div className="space-y-2">
-                {list.map((student) => (
-                  <div
-                    key={student.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <ProfileAvatar
-                        name={student.adSoyad}
-                        photoUrl={student.photoUrl}
-                        size="list"
-                        className="rounded-xl"
-                      />
-                      <div>
-                        <p className="font-bold text-slate-900">
-                          {student.adSoyad}
-                          {student.canManageAttendance ? (
-                            <Badge className="ml-2" tone="primary">
-                              Yetkili
-                            </Badge>
-                          ) : null}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Oda {student.odaNo} · {getSinifLabel(student.sinif)} · @{student.username}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(student)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="danger" size="sm" onClick={() => handleDelete(student)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+          <Card key={bolum} className="mb-6">
+            <div className="mb-4 flex items-center gap-2">
+              <CardTitle>{bolum}</CardTitle>
+              <Badge tone="primary">{list.length} öğrenci</Badge>
+            </div>
+            <div className="space-y-2">
+              {list.map((student) => (
+                <div
+                  key={student.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/40"
+                >
+                  <div className="flex items-center gap-3">
+                    <ProfileAvatar
+                      name={student.adSoyad}
+                      photoUrl={student.photoUrl}
+                      size="list"
+                      className="rounded-xl"
+                    />
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-slate-100">
+                        {student.adSoyad}
+                        {student.canManageAttendance ? (
+                          <Badge className="ml-2" tone="primary">
+                            Yetkili
+                          </Badge>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Oda {student.odaNo} · {getSinifLabel(student.sinif)} · @{student.username}
+                        <Badge className="ml-2" tone={student.ownerUid ? 'success' : 'warning'}>
+                          {student.ownerUid ? 'Hesap hazır' : 'Hesap bekliyor'}
+                        </Badge>
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </Card>
-          ))
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => openEdit(student)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(student)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))
       )}
 
       <Modal
@@ -379,15 +428,64 @@ export function AdminStudentsPage() {
             label="Kullanıcı Adı"
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
+            disabled={Boolean(editing?.ownerUid)}
           />
-          <Input
-            id="password"
-            label="Şifre"
-            type="text"
-            autoComplete="off"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
+          {editing?.ownerUid ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Provision edilmiş öğrencinin kullanıcı adı değiştirilemez (Auth e-posta bağı).
+              Yeniden adlandırma için ayrı Admin SDK operasyonu gerekir.
+            </p>
+          ) : null}
+          {editing?.ownerUid ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+              <div className="flex flex-wrap items-center gap-3">
+                <ProfileAvatar
+                  name={editing.adSoyad}
+                  photoUrl={editing.photoUrl}
+                  size="list"
+                  className="rounded-xl"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Profil fotoğrafı</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Bu fotoğraf yalnızca yönetici tarafından yönetilir.
+                  </p>
+                </div>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleStudentPhotoSelect}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={photoSaving}
+                  onClick={() => photoInputRef.current?.click()}
+                >
+                  <Camera className="h-4 w-4" />
+                  {photoSaving ? 'Yükleniyor...' : 'Fotoğraf Seç'}
+                </Button>
+                {editing.photoUrl ? (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={photoSaving}
+                    onClick={handleStudentPhotoRemove}
+                  >
+                    <Trash2 className="h-4 w-4" /> Kaldır
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {!editing ? (
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              Kayıt sonrası giriş hesabını, yönetici bilgisayarınızdaki Yerel Öğrenci Hesap Yönetimi
+              ekranından oluşturabilirsiniz. Bu işlem Auth, profil ve ownerUid bağlantısını güvenli biçimde kurar.
+            </p>
+          ) : null}
           <Switch
             id="canManage"
             label="Yoklama yetkisi ver"
@@ -437,6 +535,13 @@ export function AdminStudentsPage() {
           </div>
         ) : null}
       </Modal>
+
+      <BulkPromoteStudentsModal
+        open={promoteOpen}
+        students={students ?? []}
+        onClose={() => setPromoteOpen(false)}
+        onCompleted={reload}
+      />
     </div>
   )
 }

@@ -1,5 +1,4 @@
 import {
-  createUserWithEmailAndPassword,
   EmailAuthProvider,
   onAuthStateChanged,
   reauthenticateWithCredential,
@@ -8,53 +7,17 @@ import {
   updatePassword,
   type User,
 } from 'firebase/auth'
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  setDoc,
-  where,
-} from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
+import { GRADUATE_AUTH_USERNAME, graduateAuthEmail, isGraduateSharedUsername } from '@/lib/graduateAuth'
 import { auth, db } from '@/lib/firebase'
-import { toAuthEmail, stripUndefined } from '@/lib/utils'
-import { verifyGraduatePortalLogin } from '@/services/graduates.service'
-import type { LegacyUserRecord, LoginType, UserProfile, UserRole } from '@/types'
+import { toAuthEmail } from '@/lib/utils'
+import type { LoginType, UserProfile, UserRole } from '@/types'
 
-const GRADUATE_AUTH_USERNAME = 'mezun.portal'
-
-function mapLegacyToProfile(
-  uid: string,
-  username: string,
-  legacy: LegacyUserRecord,
-  collectionName: LoginType,
-  legacyDocId: string,
-): UserProfile {
-  const role: UserRole = collectionName === 'yoneticiler' ? 'admin' : 'student'
-
-  const profile: UserProfile = {
-    uid,
-    username,
-    adSoyad: legacy.adSoyad || username,
-    role,
-    canManageAttendance: role === 'admin' ? true : legacy.canManageAttendance === true,
-    legacyCollection: collectionName,
-    legacyDocId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  // Öğrenciye özel alanlar — yöneticide yoksa Firestore'a yazma
-  if (role === 'student') {
-    if (legacy.bolum !== undefined) profile.bolum = legacy.bolum
-    if (legacy.sinif !== undefined) profile.sinif = legacy.sinif
-    if (legacy.odaNo !== undefined) profile.odaNo = legacy.odaNo
-    if (legacy.donem !== undefined) profile.donem = legacy.donem
-  }
-
-  return profile
-}
+const GENERIC_LOGIN_ERROR = 'Hatalı kullanıcı adı veya şifre.'
+const MISSING_PROFILE_ERROR =
+  'Hesap var ancak profil bulunamadı. Yöneticiye başvurun.'
+const GRADUATE_PROFILE_ERROR =
+  'Mezun hesabı profili bulunamadı veya geçersiz. Yöneticiyle iletişime geçin.'
 
 function getErrorCode(error: unknown): string | undefined {
   if (typeof error === 'object' && error !== null && 'code' in error) {
@@ -128,125 +91,43 @@ function translateAuthError(code: string | undefined): string | null {
   }
 }
 
-async function findLegacyUser(
-  loginType: LoginType,
-  username: string,
-  password: string,
-): Promise<{ data: LegacyUserRecord; id: string } | null> {
-  try {
-    const q = query(collection(db, loginType), where('username', '==', username))
-    const snapshot = await getDocs(q)
-
-    const matchedDoc = snapshot.docs.find((docSnap) => docSnap.data().password === password)
-    if (!matchedDoc) return null
-
-    return { data: matchedDoc.data() as LegacyUserRecord, id: matchedDoc.id }
-  } catch (error) {
-    const code = getErrorCode(error)
-    if (code === 'permission-denied') {
-      throw new Error(
-        'Firestore okuma izni yok. Firebase Console → Firestore Database → Rules sekmesine gidin, güncel kuralları yapıştırıp Publish (Yayınla) butonuna basın.',
-      )
-    }
-    throw error
-  }
-}
-
-async function saveUserProfile(profile: UserProfile): Promise<void> {
-  try {
-    const cleanProfile = stripUndefined({ ...profile } as Record<string, unknown>)
-    await setDoc(doc(db, 'users', profile.uid), cleanProfile, { merge: true })
-  } catch (error) {
-    const code = getErrorCode(error)
-    if (code === 'permission-denied') {
-      throw new Error(
-        'Kullanıcı profili kaydedilemedi. Firestore Rules yayınlandığından emin olun.',
-      )
-    }
-    throw error
-  }
-}
-
 export async function fetchUserProfile(uid: string): Promise<UserProfile | null> {
   const snapshot = await getDoc(doc(db, 'users', uid))
   if (!snapshot.exists()) return null
   return snapshot.data() as UserProfile
 }
 
-async function createProfileFromLegacy(
-  loginType: LoginType,
-  username: string,
-  password: string,
-): Promise<UserProfile> {
-  const legacy = await findLegacyUser(loginType, username, password)
-  if (!legacy) {
-    throw new Error('Hatalı kullanıcı adı veya şifre.')
-  }
-
-  const email = toAuthEmail(username)
-
-  try {
-    const credential = await createUserWithEmailAndPassword(auth, email, password)
-    const profile = mapLegacyToProfile(
-      credential.user.uid,
-      username,
-      legacy.data,
-      loginType,
-      legacy.id,
-    )
-    await saveUserProfile(profile)
-    return profile
-  } catch (error) {
-    const code = getErrorCode(error)
-
-    if (code === 'auth/email-already-in-use') {
-      const credential = await signInWithEmailAndPassword(auth, email, password)
-      let profile = await fetchUserProfile(credential.user.uid)
-
-      if (!profile) {
-        profile = mapLegacyToProfile(
-          credential.user.uid,
-          username,
-          legacy.data,
-          loginType,
-          legacy.id,
-        )
-        await saveUserProfile(profile)
-      }
-
-      await ensureLoginTypeMatches(loginType, profile)
-      return profile
-    }
-
-    const translated = translateAuthError(code)
-    if (translated) throw new Error(translated)
-    throw new Error(getErrorMessage(error))
-  }
-}
-
+/**
+ * Graduate login is Auth-only against the fixed mezun.portal identity.
+ * No Firestore password read, no legacy fallback, no client users-profile create.
+ */
 async function loginAsGraduate(username: string, password: string): Promise<UserProfile> {
-  const settings = await verifyGraduatePortalLogin(username, password)
-  const email = toAuthEmail(GRADUATE_AUTH_USERNAME)
+  if (!isGraduateSharedUsername(username)) {
+    throw new Error(GENERIC_LOGIN_ERROR)
+  }
+
+  const email = graduateAuthEmail()
 
   try {
     const credential = await signInWithEmailAndPassword(auth, email, password)
-    let profile = await fetchUserProfile(credential.user.uid)
+    const profile = await fetchUserProfile(credential.user.uid)
 
-    if (!profile || profile.role !== 'graduate') {
-      profile = {
-        uid: credential.user.uid,
-        username: settings.username,
-        adSoyad: 'Mezun',
-        role: 'graduate',
-        legacyCollection: 'mezunlar',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-      await saveUserProfile(profile)
+    if (!profile) {
+      await signOut(auth)
+      throw new Error(GRADUATE_PROFILE_ERROR)
+    }
+
+    if (profile.role !== 'graduate') {
+      await signOut(auth)
+      throw new Error(GRADUATE_PROFILE_ERROR)
     }
 
     return profile
   } catch (error) {
+    if (error instanceof Error && error.message === GRADUATE_PROFILE_ERROR) {
+      throw error
+    }
+
     const code = getErrorCode(error)
     const isInvalidLogin =
       code === 'auth/user-not-found' ||
@@ -255,58 +136,58 @@ async function loginAsGraduate(username: string, password: string): Promise<User
       code === 'auth/wrong-password'
 
     if (isInvalidLogin) {
-      throw new Error(
-        'Mezun giriş hesabı henüz hazır değil. Yönetici, Ayarlar bölümünden mezun giriş bilgilerini kaydetmeli.',
-      )
+      throw new Error(GENERIC_LOGIN_ERROR, { cause: error })
     }
 
     const translated = translateAuthError(code)
-    if (translated) throw new Error(translated)
-    throw new Error(getErrorMessage(error))
+    if (translated) throw new Error(translated, { cause: error })
+    throw new Error(getErrorMessage(error), { cause: error })
   }
 }
 
+/**
+ * Student/admin/graduate: Firebase Auth only (no Firestore password fallback).
+ * Graduate: fixed mezun.portal identity + existing users/{uid} role=graduate
+ * (no client profile bootstrap, no Auth-fail fallback to a Firestore password).
+ */
 export async function login(
   loginType: LoginType,
   username: string,
   password: string,
 ): Promise<UserProfile> {
   const trimmedUsername = username.trim()
+  const trimmedPassword = password.trim()
 
-  if (!trimmedUsername || !password.trim()) {
+  if (loginType === 'mezunlar') {
+    if (!trimmedPassword) {
+      throw new Error('Lütfen şifre girin.')
+    }
+    if (trimmedPassword.length < 6) {
+      throw new Error('Şifre en az 6 karakter olmalıdır (Firebase güvenlik kuralı).')
+    }
+    await signOut(auth)
+    return loginAsGraduate(trimmedUsername || GRADUATE_AUTH_USERNAME, trimmedPassword)
+  }
+
+  if (!trimmedUsername || !trimmedPassword) {
     throw new Error('Lütfen kullanıcı adı ve şifre girin.')
   }
 
-  if (password.length < 6) {
+  if (trimmedPassword.length < 6) {
     throw new Error('Şifre en az 6 karakter olmalıdır (Firebase güvenlik kuralı).')
   }
 
   await signOut(auth)
 
-  if (loginType === 'mezunlar') {
-    return loginAsGraduate(trimmedUsername, password)
-  }
-
   const email = toAuthEmail(trimmedUsername)
 
   try {
-    const credential = await signInWithEmailAndPassword(auth, email, password)
-    let profile = await fetchUserProfile(credential.user.uid)
+    const credential = await signInWithEmailAndPassword(auth, email, trimmedPassword)
+    const profile = await fetchUserProfile(credential.user.uid)
 
     if (!profile) {
-      const legacy = await findLegacyUser(loginType, trimmedUsername, password)
-      if (!legacy) {
-        throw new Error('Hesap var ancak profil bulunamadı. Yöneticiye başvurun.')
-      }
-
-      profile = mapLegacyToProfile(
-        credential.user.uid,
-        trimmedUsername,
-        legacy.data,
-        loginType,
-        legacy.id,
-      )
-      await saveUserProfile(profile)
+      await signOut(auth)
+      throw new Error(MISSING_PROFILE_ERROR)
     }
 
     await ensureLoginTypeMatches(loginType, profile)
@@ -315,17 +196,19 @@ export async function login(
     const code = getErrorCode(error)
     const translated = translateAuthError(code)
 
-    if (translated && code === 'permission-denied') {
-      throw new Error(translated)
-    }
-
     if (
       error instanceof Error &&
-      (error.message.includes('yönetici hesabıdır') ||
+      (error.message === MISSING_PROFILE_ERROR ||
+        error.message === GRADUATE_PROFILE_ERROR ||
+        error.message.includes('yönetici hesabıdır') ||
         error.message.includes('öğrenci hesabıdır') ||
         error.message.includes('mezun girişi gerektirir'))
     ) {
       throw error
+    }
+
+    if (translated && code === 'permission-denied') {
+      throw new Error(translated, { cause: error })
     }
 
     const isInvalidLogin =
@@ -335,11 +218,11 @@ export async function login(
       code === 'auth/wrong-password'
 
     if (isInvalidLogin) {
-      return createProfileFromLegacy(loginType, trimmedUsername, password)
+      throw new Error(GENERIC_LOGIN_ERROR, { cause: error })
     }
 
-    if (translated) throw new Error(translated)
-    throw new Error(getErrorMessage(error))
+    if (translated) throw new Error(translated, { cause: error })
+    throw new Error(getErrorMessage(error), { cause: error })
   }
 }
 
@@ -354,6 +237,11 @@ export async function changePassword(
   const user = auth.currentUser
   if (!user?.email) {
     throw new Error('Oturum bulunamadı. Lütfen tekrar giriş yapın.')
+  }
+
+  const profile = await fetchUserProfile(user.uid)
+  if (profile?.role === 'graduate') {
+    throw new Error('Mezun giriş parolası bu ekrandan değiştirilemez.')
   }
 
   if (newPassword.length < 6) {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { GraduationCap, Search, Users } from 'lucide-react'
 import { GraduateCard } from '@/components/graduate/GraduateCard'
+import { TurkeyGraduateMap } from '@/components/graduate/TurkeyGraduateMap'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -8,7 +9,8 @@ import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
 import { useAsync } from '@/hooks/useAsync'
 import {
-  fetchGraduateLoginSettings,
+  DEFAULT_GRADUATE_WELCOME,
+  fetchGraduateWelcomeSettings,
   fetchGraduates,
   groupGraduatesByYear,
 } from '@/services/graduates.service'
@@ -17,10 +19,16 @@ export function GraduateHomePage() {
   const [search, setSearch] = useState('')
   const [yearFilter, setYearFilter] = useState<string>('all')
 
-  const settingsQuery = useAsync(() => fetchGraduateLoginSettings(), [])
-  const graduatesQuery = useAsync(() => fetchGraduates(), [])
+  const pageQuery = useAsync(async () => {
+    const [graduates, welcome] = await Promise.all([
+      fetchGraduates(),
+      fetchGraduateWelcomeSettings(),
+    ])
+    return { graduates, welcome }
+  }, [])
 
-  const graduates = graduatesQuery.data || []
+  const graduates = useMemo(() => pageQuery.data?.graduates ?? [], [pageQuery.data])
+  const welcome = pageQuery.data?.welcome ?? DEFAULT_GRADUATE_WELCOME
   const groups = useMemo(() => groupGraduatesByYear(graduates), [graduates])
   const years = useMemo(() => [...groups.keys()].sort((a, b) => b - a), [groups])
 
@@ -53,8 +61,15 @@ export function GraduateHomePage() {
     return result
   }, [groups, search, yearFilter])
 
-  const settings = settingsQuery.data
-  const loading = graduatesQuery.loading || settingsQuery.loading
+  const filteredGraduates = useMemo(() => {
+    const list: typeof graduates = []
+    for (const [, yearList] of filteredGroups) {
+      list.push(...yearList)
+    }
+    return list
+  }, [filteredGroups])
+
+  const loading = pageQuery.loading
 
   if (loading) {
     return <Spinner label="Mezun ağı yükleniyor..." />
@@ -68,14 +83,13 @@ export function GraduateHomePage() {
         <div className="relative">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider">
             <GraduationCap className="h-4 w-4" />
-            Mezun Ağı
+            {welcome.welcomeTitle}
           </div>
           <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-            {settings?.welcomeTitle || 'Mezun Ağı'}
+            {welcome.welcomeTitle}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-primary-100 sm:text-base">
-            {settings?.welcomeMessage ||
-              'Yurt arkadaşlarınızın güncel hayat hikâyelerini keşfedin.'}
+            {welcome.welcomeMessage}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Badge tone="primary" className="bg-white/15 text-white ring-1 ring-white/20">
@@ -109,7 +123,7 @@ export function GraduateHomePage() {
             id="year-filter"
             value={yearFilter}
             onChange={(event) => setYearFilter(event.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm outline-none ring-primary-500 focus:ring-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-primary-500 dark:focus:bg-slate-800 dark:focus:ring-primary-500/30 dark:[color-scheme:dark]"
           >
             <option value="all">Tüm yıllar</option>
             {years.map((year) => (
@@ -135,6 +149,8 @@ export function GraduateHomePage() {
         />
       ) : (
         <div className="mt-8 space-y-10">
+          <TurkeyGraduateMap graduates={filteredGraduates} />
+
           {[...filteredGroups.entries()].map(([year, list]) => (
             <section key={year}>
               <div className="mb-4 flex items-end justify-between gap-3">

@@ -5,6 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Keep in sync with shared/authIdentity.mjs (migration script). */
 export function toAuthEmail(username: string): string {
   const normalized = username
     .trim()

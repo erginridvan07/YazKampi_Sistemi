@@ -140,44 +140,56 @@ export function ProfilePage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="flex flex-col items-center gap-3 sm:items-start">
               <ProfileAvatar name={profile.adSoyad} photoUrl={profile.photoUrl} size="lg" />
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                className="hidden"
-                onChange={handlePhotoSelect}
-              />
-              <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={photoLoading}
-                  onClick={() => photoInputRef.current?.click()}
-                >
-                  <Camera className="h-4 w-4" />
-                  {photoLoading ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
-                </Button>
-                {profile.photoUrl ? (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    disabled={photoLoading}
-                    onClick={handlePhotoRemove}
-                  >
-                    <Trash2 className="h-4 w-4" /> Kaldır
-                  </Button>
-                ) : null}
-              </div>
-              <p className="max-w-xs text-center text-xs text-slate-500 dark:text-slate-400 sm:text-left">
-                JPG, PNG veya WebP · En fazla 8 MB · Firebase Storage gerekmez
-              </p>
+              {profile.role === 'student' ? (
+                <p className="max-w-xs text-center text-xs text-slate-500 dark:text-slate-400 sm:text-left">
+                  Profil fotoğrafınız yönetici tarafından eklenir veya değiştirilir.
+                </p>
+              ) : (
+                <>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+                  <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={photoLoading}
+                      onClick={() => photoInputRef.current?.click()}
+                    >
+                      <Camera className="h-4 w-4" />
+                      {photoLoading ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
+                    </Button>
+                    {profile.photoUrl ? (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        disabled={photoLoading}
+                        onClick={handlePhotoRemove}
+                      >
+                        <Trash2 className="h-4 w-4" /> Kaldır
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="max-w-xs text-center text-xs text-slate-500 dark:text-slate-400 sm:text-left">
+                    JPG, PNG veya WebP · En fazla 8 MB · Firebase Storage gerekmez
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex-1">
               <CardTitle>{profile.adSoyad}</CardTitle>
               <CardDescription>@{profile.username}</CardDescription>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge tone={profile.role === 'admin' ? 'primary' : 'success'}>
-                  {profile.role === 'admin' ? 'Yönetici' : 'Öğrenci'}
+                  {profile.role === 'admin'
+                    ? 'Yönetici'
+                    : profile.role === 'graduate'
+                      ? 'Mezun'
+                      : 'Öğrenci'}
                 </Badge>
                 {profile.canManageAttendance ? (
                   <Badge tone="warning">Yoklama Yetkilisi</Badge>
@@ -271,6 +283,7 @@ export function ProfilePage() {
           </div>
         </Card>
 
+        {profile.role === 'admin' ? (
         <Card accent="warning" className="lg:col-span-2">
           <CardTitle>Şifre Değiştir</CardTitle>
           <CardDescription>Güvenliğiniz için mevcut şifrenizi doğrulamanız gerekir</CardDescription>
@@ -301,6 +314,23 @@ export function ProfilePage() {
             {saving ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
           </Button>
         </Card>
+        ) : profile.role === 'student' ? (
+        <Card accent="warning" className="lg:col-span-2">
+          <CardTitle>Şifre Yardımı</CardTitle>
+          <CardDescription>
+            Şifrenizi değiştirmek veya sıfırlamak için yöneticinize başvurun. Şifre işlemleri
+            yalnız güvenli yönetici hesabı ekranından yapılır.
+          </CardDescription>
+        </Card>
+        ) : (
+        <Card accent="warning" className="lg:col-span-2">
+          <CardTitle>Şifre</CardTitle>
+          <CardDescription>
+            Mezun giriş parolası güvenli yönetim aracıyla değiştirilir. Bu ekrandan ortak hesap
+            şifresi güncellenmez.
+          </CardDescription>
+        </Card>
+        )}
       </div>
     </div>
   )

@@ -12,6 +12,10 @@ import {
   filterAnnouncementsForDisplay,
 } from '@/services/announcements.service'
 import { createLeaveRequest, fetchStudentLeaves } from '@/services/leaves.service'
+import {
+  announcementContentClassName,
+  normalizeAnnouncementContent,
+} from '@/lib/announcementContent'
 import { useAuthStore } from '@/stores/auth.store'
 import { useToastStore } from '@/stores/toast.store'
 
@@ -28,8 +32,8 @@ export function StudentHomePage() {
   }, [])
 
   const leavesQuery = useAsync(
-    () => (profile ? fetchStudentLeaves(profile.adSoyad) : Promise.resolve([])),
-    [profile?.adSoyad],
+    () => (profile ? fetchStudentLeaves(profile.uid) : Promise.resolve([])),
+    [profile?.uid],
   )
 
   const [slide, setSlide] = useState(0)
@@ -111,10 +115,9 @@ export function StudentHomePage() {
               {slides[slide].type === 'duty' ? 'Görev' : 'Duyuru'}
             </Badge>
             <p className="font-bold">{slides[slide].title}</p>
-            <p
-              className="mt-2 text-sm text-primary-100"
-              dangerouslySetInnerHTML={{ __html: slides[slide].content }}
-            />
+            <p className={`mt-2 text-sm text-primary-100 ${announcementContentClassName}`}>
+              {normalizeAnnouncementContent(slides[slide].content)}
+            </p>
           </div>
           {slides.length > 1 ? (
             <>
